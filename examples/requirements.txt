@@ -1,0 +1,19 @@
+# S3verless Examples - Required Dependencies
+
+# Core framework
+s3verless>=0.1.0
+
+# Web server
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+
+# Optional: For local development without AWS
+localstack>=3.0.0
+
+# The following are already included as s3verless dependencies:
+# - fastapi
+# - pydantic
+# - aiobotocore
+# - python-jose[cryptography]
+# - passlib[bcrypt]
+

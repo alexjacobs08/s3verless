@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S3verless - Because Databases Are Overrated</title>
+    <meta name="description" content="Use S3 as your database. Yes, really. We're serious. (Kind of.)">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🪣%3C/text%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-green: #4ade80;
+            --light-green: #86efac;
+            --dark-green: #22c55e;
+            --bg-white: #ffffff;
+            --bg-light: #f0fdf4;
+            --gentle-blue: #60a5fa;
+            --soft-blue: #93c5fd;
+            --text-dark: #1e293b;
+            --text-gray: #64748b;
+            --border: #e2e8f0;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.12);
+            --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.16);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-white);
+            color: var(--text-dark);
+            line-height: 1.7;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .hero {
+            min-height: 85vh;
+            background: linear-gradient(180deg, #f8fffe 0%, #f0f9ff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            padding: 6rem 0 4rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-content {
+            text-align: center;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--dark-green) 0%, var(--gentle-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+        }
+
+        .tagline {
+            font-size: 1.5rem;
+            color: var(--text-gray);
+            margin-bottom: 2.5rem;
+            font-weight: 400;
+            letter-spacing: -0.01em;
+        }
+
+        .disclaimer {
+            font-size: 1rem;
+            color: var(--text-gray);
+            font-style: italic;
+            margin-bottom: 2.5rem;
+            opacity: 0.7;
+            font-weight: 400;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1.25rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 3rem;
+        }
+
+        .btn {
+            padding: 0.875rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            display: inline-block;
+            border: none;
+            cursor: pointer;
+            letter-spacing: -0.01em;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(34, 197, 94, 0.35);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--text-dark);
+            border: 1px solid #e5e7eb;
+        }
+
+        .btn-secondary:hover {
+            border-color: #d1d5db;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .install-code {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: var(--primary-green);
+            padding: 1.25rem 2.5rem;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 1.125rem;
+            display: inline-block;
+            margin: 2rem 0 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(74, 222, 128, 0.15);
+        }
+
+        .section {
+            padding: 5rem 0;
+        }
+
+        .section-alt {
+            background: linear-gradient(180deg, var(--bg-light) 0%, rgba(240, 253, 244, 0.5) 100%);
+            position: relative;
+        }
+
+        .section-title {
+            font-size: 3rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 3rem;
+            color: var(--text-dark);
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .feature-card:hover {
+            border-color: #d1d5db;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .feature-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-dark);
+            letter-spacing: -0.01em;
+        }
+
+        .feature-description {
+            color: var(--text-gray);
+            line-height: 1.6;
+            font-size: 0.9375rem;
+        }
+
+        .absurdity-section {
+            background: #f9fafb;
+            padding: 5rem 0;
+            text-align: center;
+        }
+
+        .absurdity-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 2.5rem;
+            color: var(--text-dark);
+            letter-spacing: -0.02em;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: left;
+            position: relative;
+            z-index: 1;
+        }
+
+        .comparison-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+        }
+
+        .comparison-box:hover {
+            border-color: #d1d5db;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .comparison-box h3 {
+            font-size: 1.25rem;
+            margin-bottom: 1.25rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .boring {
+            border-left: 3px solid #dc2626;
+        }
+
+        .boring h3 {
+            color: #dc2626;
+        }
+
+        .exciting {
+            border-left: 3px solid var(--dark-green);
+        }
+
+        .exciting h3 {
+            color: var(--dark-green);
+        }
+
+        .comparison-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .comparison-list li {
+            padding: 0.5rem 0;
+            padding-left: 2rem;
+            position: relative;
+            font-size: 0.9375rem;
+        }
+
+        .comparison-list li::before {
+            position: absolute;
+            left: 0;
+            font-size: 1.25rem;
+        }
+
+        .boring .comparison-list li::before {
+            content: '❌';
+        }
+
+        .exciting .comparison-list li::before {
+            content: '✅';
+        }
+
+        .code-wrapper {
+            margin: 2rem auto;
+            max-width: 900px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow-xl);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .code-header {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-bottom: 1px solid rgba(74, 222, 128, 0.1);
+        }
+
+        .code-dots {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .code-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            opacity: 0.8;
+        }
+
+        .code-dot.red {
+            background: #ff5f56;
+        }
+
+        .code-dot.yellow {
+            background: #ffbd2e;
+        }
+
+        .code-dot.green {
+            background: #27c93f;
+        }
+
+        .code-filename {
+            color: #cbd5e0;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 0.875rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .code-example {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: var(--light-green);
+            padding: 2.5rem;
+            margin: 0;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 1rem;
+            line-height: 1.8;
+            position: relative;
+            white-space: pre;
+        }
+
+        .code-example::before {
+            display: none;
+        }
+
+        .code-comment {
+            color: var(--soft-blue);
+            font-style: italic;
+        }
+
+        .testimonial {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            border: 1px solid #e5e7eb;
+            border-left: 3px solid var(--primary-green);
+            transition: all 0.2s ease;
+        }
+
+        .testimonial:hover {
+            border-color: #d1d5db;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .testimonial-text {
+            font-size: 1rem;
+            font-style: italic;
+            color: var(--text-gray);
+            margin-bottom: 1rem;
+            line-height: 1.6;
+            font-weight: 400;
+        }
+
+        .testimonial-author {
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 0.9375rem;
+        }
+
+        .testimonial-role {
+            color: var(--text-gray);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        footer {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 3rem 0 2rem;
+            text-align: center;
+            border-top: 1px solid rgba(74, 222, 128, 0.1);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: color 0.2s ease;
+            font-weight: 500;
+            font-size: 0.9375rem;
+        }
+
+        .footer-links a:hover {
+            color: var(--light-green);
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            border: 2px solid #fca5a5;
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin: 3rem auto;
+            max-width: 850px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .warning-box h3 {
+            color: #dc2626;
+            margin-bottom: 1.5rem;
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 3rem;
+            }
+
+            .logo {
+                font-size: 3.5rem;
+            }
+
+            .tagline {
+                font-size: 1.3rem;
+            }
+
+            .section-title {
+                font-size: 2.5rem;
+            }
+
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .section {
+                padding: 4rem 0;
+            }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.375rem 0.875rem;
+            background: white;
+            color: var(--text-dark);
+            border-radius: 6px;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            margin: 0 0.375rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 3rem 0;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 2rem 1.5rem;
+            border-radius: 12px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+        }
+
+        .stat:hover {
+            border-color: #d1d5db;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--dark-green) 0%, var(--gentle-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+
+        .stat-label {
+            color: var(--text-gray);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            font-weight: 500;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-bottom: 1px solid rgba(74, 222, 128, 0.1);
+            padding: 0.75rem 0;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .navbar.scrolled {
+            padding: 0.5rem 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .navbar .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: white;
+            transition: transform 0.3s ease;
+        }
+
+        .navbar-brand:hover {
+            transform: scale(1.05);
+        }
+
+        .navbar-logo {
+            font-size: 1.75rem;
+            filter: drop-shadow(0 2px 4px rgba(74, 222, 128, 0.3));
+        }
+
+        .navbar-text {
+            background: linear-gradient(135deg, var(--light-green) 0%, var(--gentle-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar-menu a {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9375rem;
+            transition: all 0.3s ease;
+            position: relative;
+            padding: 0.5rem 0;
+        }
+
+        .navbar-menu a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary-green), var(--gentle-blue));
+            transition: width 0.3s ease;
+        }
+
+        .navbar-menu a:hover {
+            color: var(--light-green);
+        }
+
+        .navbar-menu a:hover::after {
+            width: 100%;
+        }
+
+        .navbar-cta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .navbar-btn {
+            padding: 0.5rem 1.25rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .navbar-btn-primary {
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+        }
+
+        .navbar-btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+        }
+
+        .navbar-btn-secondary {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+            background: transparent;
+        }
+
+        .navbar-btn-secondary:hover {
+            border-color: var(--primary-green);
+            background: rgba(74, 222, 128, 0.1);
+            color: white;
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            flex-direction: column;
+            gap: 0.375rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        .mobile-menu-toggle span {
+            width: 24px;
+            height: 2px;
+            background: white;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .navbar-menu {
+                display: none;
+            }
+
+            .navbar-cta {
+                gap: 0.5rem;
+            }
+
+            .navbar-btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+
+            .navbar-btn-secondary {
+                display: none;
+            }
+
+            .mobile-menu-toggle {
+                display: flex;
+            }
+        }
+
+        /* Add padding to body to account for fixed navbar */
+        body {
+            padding-top: 64px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar">
+        <div class="container">
+            <a href="#" class="navbar-brand">
+                <span class="navbar-logo">🪣</span>
+                <span class="navbar-text">S3verless</span>
+            </a>
+            
+            <ul class="navbar-menu">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#how-it-works">How It Works</a></li>
+                <li><a href="#testimonials">Testimonials</a></li>
+                <li><a href="https://github.com/alexjacobs08/s3verless/blob/main/README.md">Docs</a></li>
+            </ul>
+
+            <div class="navbar-cta">
+                <a href="https://github.com/alexjacobs08/s3verless" class="navbar-btn navbar-btn-secondary">
+                    View on GitHub
+                </a>
+                <a href="https://pypi.org/project/s3verless/" class="navbar-btn navbar-btn-primary">
+                    Get Started
+                </a>
+            </div>
+
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="logo">🪣</div>
+                <h1>S3verless</h1>
+                <p class="tagline">Who needs a database when you have a bucket?</p>
+                <div class="cta-buttons">
+                    <a href="https://github.com/alexjacobs08/s3verless" class="btn btn-primary">
+                        ⭐ Star on GitHub
+                    </a>
+                    <a href="https://pypi.org/project/s3verless/" class="btn btn-secondary">
+                        📦 View on PyPI
+                    </a>
+                </div>
+
+                <div class="install-code">
+                    $ pip install s3verless
+                </div>
+
+                <div>
+                    <span class="badge">v0.1.0 Alpha</span>
+                    <span class="badge">MIT License</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- What Is Section -->
+    <section class="section" style="padding: 4rem 0;">
+        <div class="container" style="max-width: 800px;">
+            <h2 class="section-title" style="font-size: 2.5rem; margin-bottom: 2rem;">What is S3verless?</h2>
+            <div style="background: white; padding: 2rem; border-radius: 12px; border: 1px solid #e5e7eb;">
+                <p style="font-size: 1.125rem; line-height: 1.8; color: var(--text-dark); margin-bottom: 1.5rem;">
+                    <strong>S3verless</strong> is a Python framework that treats AWS S3 as a database. Instead of managing database servers, connection pools, and complex infrastructure, you simply store your data as JSON objects in S3 buckets.
+                </p>
+                <p style="font-size: 1.125rem; line-height: 1.8; color: var(--text-dark); margin-bottom: 1.5rem;">
+                    Define your data models with Pydantic, and S3verless automatically generates a complete REST API with CRUD operations, pagination, filtering, and even JWT authentication—all backed by S3's infinite scalability and rock-bottom pricing.
+                </p>
+                <p style="font-size: 1.125rem; line-height: 1.8; color: var(--text-dark);">
+                    Perfect for MVPs, prototypes, side projects, and small-to-medium applications where you want to ship fast without the overhead of traditional database infrastructure.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section class="absurdity-section">
+        <div class="container">
+            <h2 class="absurdity-title">Why Would You Do This? 🤔</h2>
+            
+            <div class="comparison">
+                <div class="comparison-box boring">
+                    <h3>😴 Normal People</h3>
+                    <ul class="comparison-list">
+                        <li>Set up PostgreSQL server</li>
+                        <li>Configure connection pooling</li>
+                        <li>Manage database migrations</li>
+                        <li>Monitor query performance</li>
+                        <li>Scale replicas</li>
+                        <li>Pray backups work</li>
+                        <li>Pay for RDS</li>
+                        <li>Wake up at 3AM</li>
+                    </ul>
+                </div>
+
+                <div class="comparison-box exciting">
+                    <h3>🪣 S3verless Enjoyers</h3>
+                    <ul class="comparison-list">
+                        <li>Create S3 bucket</li>
+                        <li>Write Python code</li>
+                        <li>Deploy</li>
+                        <li>Go to beach</li>
+                        <li>Check phone: App still works</li>
+                        <li>Pay $0.02/month</li>
+                        <li>Sleep peacefully</li>
+                        <li>Live your best life</li>
+                    </ul>
+                </div>
+            </div>
+
+            <p style="margin-top: 2rem; font-size: 1.1rem; color: #78350f;">
+                <strong>Spoiler:</strong> S3 is infinitely scalable, ridiculously cheap, and requires zero maintenance. 
+                Your "real database" is not.
+            </p>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section" id="features">
+        <div class="container">
+            <h2 class="section-title">Features That Shouldn't Exist<br>(But Totally Work)</h2>
+            
+            <div class="features">
+                <div class="feature-card">
+                    <span class="feature-icon">🗄️</span>
+                    <h3 class="feature-title">S3 as a "Database"</h3>
+                    <p class="feature-description">
+                        Store JSON objects in S3. Query them like a database. 
+                        Your DBA is crying. You're laughing. Everyone's confused.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">⚡</span>
+                    <h3 class="feature-title">Auto-Generated APIs</h3>
+                    <p class="feature-description">
+                        Define a Pydantic model. Get a full REST API. 
+                        CRUD operations, pagination, filtering - all automatic. 
+                        Magic? No, just questionable choices.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🔐</span>
+                    <h3 class="feature-title">JWT Auth in S3</h3>
+                    <p class="feature-description">
+                        Users? Stored in S3. Sessions? S3. 
+                        Tokens? You guessed it - S3. 
+                        It's S3 all the way down.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🎨</span>
+                    <h3 class="feature-title">Admin Interface</h3>
+                    <p class="feature-description">
+                        Auto-generated admin panel for your S3 "database". 
+                        Browse, edit, delete your JSON files like a professional.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🔍</span>
+                    <h3 class="feature-title">Advanced Queries*</h3>
+                    <p class="feature-description">
+                        Filter, sort, paginate your data! 
+                        <small>*We download everything and filter in Python. 
+                        It's... fine. Probably.</small>
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">💰</span>
+                    <h3 class="feature-title">Absurdly Cheap</h3>
+                    <p class="feature-description">
+                        S3 costs $0.023 per GB per month. 
+                        Your entire database might cost less than a coffee. 
+                        Your AWS bill will think there's a mistake.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Code Example Section -->
+    <section class="section section-alt" id="how-it-works">
+        <div class="container">
+            <h2 class="section-title">See How Ridiculous This Is</h2>
+            
+            <div class="code-wrapper">
+                <div class="code-header">
+                    <div class="code-dots">
+                        <span class="code-dot red"></span>
+                        <span class="code-dot yellow"></span>
+                        <span class="code-dot green"></span>
+                    </div>
+                    <span class="code-filename">main.py</span>
+                </div>
+                <div class="code-example">
+<span class="code-comment"># This is your entire backend. Seriously.</span>
+
+<span style="color: #f472b6;">from</span> s3verless <span style="color: #f472b6;">import</span> BaseS3Model, create_s3verless_app
+<span style="color: #f472b6;">from</span> pydantic <span style="color: #f472b6;">import</span> Field
+
+<span class="code-comment"># Define a model</span>
+<span style="color: #f472b6;">class</span> <span style="color: #fbbf24;">Product</span>(BaseS3Model):
+    _unique_fields = [<span style="color: #fbbf24;">"sku"</span>]  <span class="code-comment"># Uniqueness enforced across S3!</span>
+    
+    name: <span style="color: #60a5fa;">str</span>
+    sku: <span style="color: #60a5fa;">str</span>
+    price: <span style="color: #60a5fa;">float</span> = Field(gt=<span style="color: #fbbf24;">0</span>)
+    stock: <span style="color: #60a5fa;">int</span> = <span style="color: #fbbf24;">0</span>
+
+<span class="code-comment"># Create the app</span>
+app = create_s3verless_app(
+    title=<span style="color: #fbbf24;">"My S3 Store"</span>,
+    model_packages=[<span style="color: #fbbf24;">"models"</span>],
+)
+
+<span class="code-comment"># That's it. You now have:</span>
+<span class="code-comment"># - POST /products</span>
+<span class="code-comment"># - GET /products (with pagination!)</span>
+<span class="code-comment"># - GET /products/{id}</span>
+<span class="code-comment"># - PUT /products/{id}</span>
+<span class="code-comment"># - DELETE /products/{id}</span>
+<span class="code-comment"># - GET /admin (GUI!)</span>
+<span class="code-comment"># - All backed by... a bucket. 🪣</span>
+                </div>
+            </div>
+
+            <p style="text-align: center; margin-top: 2rem; font-size: 1.2rem; color: var(--text-gray);">
+                <em>"This feels wrong but I can't stop using it"</em> - Probably you, soon
+            </p>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="section">
+        <div class="container">
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-number">$0.02</div>
+                    <div class="stat-label">Monthly cost for 10k users</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Database servers to manage</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">∞</div>
+                    <div class="stat-label">Scalability (it's S3)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">🤯</div>
+                    <div class="stat-label">Your DBA's reaction</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="section section-alt" id="testimonials">
+        <div class="container">
+            <h2 class="section-title">What People Are Saying*</h2>
+            
+            <div class="testimonial">
+                <p class="testimonial-text">
+                    "I showed this to our DBA and they had to lie down."
+                </p>
+                <p class="testimonial-author">Sarah K.</p>
+                <p class="testimonial-role">Senior Developer Who Made Questionable Choices</p>
+            </div>
+
+            <div class="testimonial">
+                <p class="testimonial-text">
+                    "My infrastructure diagram is just a bucket now. My manager thinks I'm not working."
+                </p>
+                <p class="testimonial-author">Mike R.</p>
+                <p class="testimonial-role">DevOps Engineer (Unemployed Soon)</p>
+            </div>
+
+            <div class="testimonial">
+                <p class="testimonial-text">
+                    "I went from 10 AWS services to 1. I don't know what to do with all this free time."
+                </p>
+                <p class="testimonial-author">Jessica L.</p>
+                <p class="testimonial-role">Full Stack Developer Living Her Best Life</p>
+            </div>
+
+            <p style="text-align: center; margin-top: 2rem; font-size: 0.9rem; color: var(--text-gray);">
+                <em>*These are totally real and not made up. Trust us.</em>
+            </p>
+        </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="section">
+        <div class="container" style="text-align: center; max-width: 700px;">
+            <h2 class="section-title">Ready to Get Started?</h2>
+            <p style="font-size: 1.125rem; color: var(--text-gray); margin-bottom: 2.5rem; line-height: 1.7;">
+                Join developers who are building MVPs and prototypes with S3verless. 
+                It's free, open source, and surprisingly practical.
+            </p>
+            
+            <div class="cta-buttons">
+                <a href="https://github.com/alexjacobs08/s3verless" class="btn btn-primary">
+                    Get Started on GitHub
+                </a>
+                <a href="https://github.com/alexjacobs08/s3verless#-quick-start" class="btn btn-secondary">
+                    Read the Docs
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p style="font-size: 1rem; margin-bottom: 0.75rem; opacity: 0.9;">
+                S3verless • Open Source Python Framework
+            </p>
+            
+            <div class="footer-links">
+                <a href="https://github.com/alexjacobs08/s3verless">GitHub</a>
+                <a href="https://github.com/alexjacobs08/s3verless/blob/main/README.md">Documentation</a>
+                <a href="https://github.com/alexjacobs08/s3verless/issues">Issues</a>
+                <a href="https://github.com/alexjacobs08/s3verless/blob/main/CONTRIBUTING.md">Contributing</a>
+                <a href="https://github.com/alexjacobs08/s3verless/blob/main/LICENSE">MIT License</a>
+                <a href="https://github.com/alexjacobs08/s3verless/blob/main/CHANGELOG.md">Changelog</a>
+            </div>
+
+            <p style="margin-top: 2rem; font-size: 0.8125rem; opacity: 0.5;">
+                © 2025 S3verless Contributors • MIT License
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Add sparkle effect on logo hover
+        const logo = document.querySelector('.logo');
+        logo.addEventListener('mouseenter', () => {
+            logo.style.transform = 'scale(1.2) rotate(10deg)';
+        });
+        logo.addEventListener('mouseleave', () => {
+            logo.style.transform = 'scale(1) rotate(0deg)';
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,109 @@
+[project]
+name = "s3verless"
+version = "0.1.1"
+description = "A framework for building serverless applications using S3 as a backend"
+authors = [
+    {name = "S3verless Contributors", email = "alex.jacobs08+s3verless@gmail.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ["s3", "serverless", "fastapi", "aws", "backend"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Framework :: FastAPI",
+]
+
+dependencies = [
+    "fastapi>=0.115.0",
+    "pydantic[email]>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "aiobotocore>=2.15.0",
+    "botocore>=1.35.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "bcrypt>=4.0.0,<5.0.0",
+    "python-multipart>=0.0.12",
+    "click>=8.1.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "mypy>=1.13.0",
+    "ruff>=0.7.0",
+    "moto[s3]>=5.0.18",
+    "httpx>=0.27.0",
+]
+
+[project.scripts]
+s3verless = "s3verless.cli:cli"
+
+[project.urls]
+Homepage = "https://s3verless.org"
+Repository = "https://github.com/alexjacobs08/s3verless"
+Documentation = "https://s3verless.org"
+Issues = "https://github.com/alexjacobs08/s3verless/issues"
+Changelog = "https://github.com/alexjacobs08/s3verless/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["s3verless"]
+
+[tool.hatch.build.targets.sdist]
+# Only include essential files in source distribution
+include = [
+    "s3verless/",
+    "tests/",
+    "examples/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "pyproject.toml",
+]
+
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --cov=s3verless --cov-report=term-missing"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "I", "N", "UP", "PL", "RUF"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["N802", "N803", "N806"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto" 

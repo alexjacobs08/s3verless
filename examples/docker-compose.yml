@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # LocalStack for local S3 development
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+      - "4510-4559:4510-4559"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - ./localstack-data:/tmp/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - s3verless-network
+
+  # Example: Todo App
+  todo-app:
+    build:
+      context: ./todo_app
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - AWS_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_BUCKET_NAME=todo-app
+      - SECRET_KEY=dev-secret-key-change-in-production
+    depends_on:
+      - localstack
+    networks:
+      - s3verless-network
+    profiles:
+      - todo
+
+  # Example: Blog Platform
+  blog-platform:
+    build:
+      context: ./blog_platform
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - AWS_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_BUCKET_NAME=blog-platform
+      - SECRET_KEY=dev-secret-key-change-in-production
+    depends_on:
+      - localstack
+    networks:
+      - s3verless-network
+    profiles:
+      - blog
+
+  # Example: E-commerce
+  ecommerce:
+    build:
+      context: ./ecommerce
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    environment:
+      - AWS_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_BUCKET_NAME=ecommerce
+      - SECRET_KEY=dev-secret-key-change-in-production
+    depends_on:
+      - localstack
+    networks:
+      - s3verless-network
+    profiles:
+      - ecommerce
+
+  # Example: Auth
+  auth-example:
+    build:
+      context: ./auth_example
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"
+    environment:
+      - AWS_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_BUCKET_NAME=auth-example
+      - SECRET_KEY=dev-secret-key-change-in-production
+    depends_on:
+      - localstack
+    networks:
+      - s3verless-network
+    profiles:
+      - auth
+
+networks:
+  s3verless-network:
+    driver: bridge
+
+volumes:
+  localstack-data:
+

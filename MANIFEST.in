@@ -1,0 +1,18 @@
+# MANIFEST.in - Include additional files in the package distribution
+
+# Include README and LICENSE from parent directory
+graft s3verless
+
+# Include documentation
+include README.md
+include ../LICENSE
+
+# Exclude test files from distribution
+recursive-exclude tests *
+recursive-exclude __pycache__ *
+
+# Exclude development files
+exclude .gitignore
+exclude .env
+exclude .env.example
+
