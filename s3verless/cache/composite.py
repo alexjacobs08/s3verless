@@ -29,13 +29,14 @@ class CompositeCache(CacheBackend):
             raise ValueError("At least one cache backend is required")
         self._caches = caches
 
-    async def get(self, key: str) -> Any | None:
+    async def get(self, key: str, ttl: int | None = None) -> Any | None:
         """Get a value, checking caches in order.
 
         If found in a later cache, the value is promoted to earlier caches.
 
         Args:
             key: The cache key
+            ttl: Optional TTL to use when promoting to earlier caches
 
         Returns:
             The cached value or None if not found
@@ -43,9 +44,9 @@ class CompositeCache(CacheBackend):
         for i, cache in enumerate(self._caches):
             value = await cache.get(key)
             if value is not None:
-                # Promote to earlier caches
+                # Promote to earlier caches with consistent TTL
                 for earlier_cache in self._caches[:i]:
-                    await earlier_cache.set(key, value)
+                    await earlier_cache.set(key, value, ttl=ttl)
                 return value
         return None
 

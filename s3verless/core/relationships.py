@@ -110,8 +110,10 @@ class RelationshipResolver:
                 items, relationship, service
             )
         elif relationship.relation_type == RelationType.MANY_TO_MANY:
-            # Not implemented yet - would need junction table
-            return {}
+            raise NotImplementedError(
+                "MANY_TO_MANY relationships are not yet implemented. "
+                "Consider using a junction model with two MANY_TO_ONE relationships."
+            )
 
         return {}
 

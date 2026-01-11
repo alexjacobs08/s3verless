@@ -91,11 +91,20 @@ class InMemoryCache(CacheBackend):
             if actual_ttl is not None:
                 expires_at = datetime.now(timezone.utc) + timedelta(seconds=actual_ttl)
 
-            # Evict if at max size
+            # Evict if at max size - first clean expired, then evict oldest
             if self.max_size and len(self._cache) >= self.max_size:
-                # Remove oldest entry
-                oldest_key = next(iter(self._cache))
-                del self._cache[oldest_key]
+                # First try to remove expired entries
+                expired_keys = [
+                    k for k, entry in self._cache.items()
+                    if entry.is_expired()
+                ]
+                for k in expired_keys:
+                    del self._cache[k]
+
+                # If still at capacity, remove oldest entry
+                if len(self._cache) >= self.max_size:
+                    oldest_key = next(iter(self._cache))
+                    del self._cache[oldest_key]
 
             self._cache[key] = CacheEntry(value=value, expires_at=expires_at)
 
@@ -126,8 +135,14 @@ class InMemoryCache(CacheBackend):
         Returns:
             True if the key exists and is valid
         """
-        value = await self.get(key)
-        return value is not None
+        async with self._lock:
+            entry = self._cache.get(key)
+            if entry is None:
+                return False
+            if entry.is_expired():
+                del self._cache[key]
+                return False
+            return True
 
     async def clear(self) -> None:
         """Clear all entries from the cache."""

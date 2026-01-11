@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -10,6 +11,8 @@ from typing import Any, Generic, TypeVar
 from s3verless.core.base import BaseS3Model
 from s3verless.core.client import S3ClientProtocol
 from s3verless.core.exceptions import S3verlessException
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseS3Model)
 
@@ -155,7 +158,11 @@ class S3Query(Generic[T]):
         return self
 
     def _parse_operator(self, op: str) -> FilterOperator:
-        """Parse string operator to FilterOperator enum."""
+        """Parse string operator to FilterOperator enum.
+
+        Raises:
+            ValueError: If operator is not recognized
+        """
         mapping = {
             "eq": FilterOperator.EQ,
             "neq": FilterOperator.NEQ,
@@ -171,7 +178,10 @@ class S3Query(Generic[T]):
             "is_null": FilterOperator.IS_NULL,
             "is_not_null": FilterOperator.IS_NOT_NULL,
         }
-        return mapping.get(op, FilterOperator.EQ)
+        if op not in mapping:
+            valid_ops = ", ".join(mapping.keys())
+            raise ValueError(f"Unknown filter operator '{op}'. Valid operators: {valid_ops}")
+        return mapping[op]
 
     def exclude(self, **kwargs) -> "S3Query[T]":
         """Add exclusion filters."""
@@ -256,7 +266,16 @@ class S3Query(Generic[T]):
         # Apply sorting
         if self._sort_field:
             reverse = self._sort_order == SortOrder.DESC
-            objects.sort(key=lambda x: x.get(self._sort_field, ""), reverse=reverse)
+
+            def sort_key(x):
+                value = x.get(self._sort_field)
+                if value is None:
+                    # None sorts last for ASC, first for DESC
+                    return (1, "") if not reverse else (0, "")
+                # Convert to string for consistent comparison across types
+                return (0, str(value)) if not reverse else (1, str(value))
+
+            objects.sort(key=sort_key, reverse=reverse)
 
         # Apply offset and limit
         if self._offset:
@@ -388,8 +407,17 @@ class S3Query(Generic[T]):
             if self._matches_filters(obj_data):
                 return obj_data
             return None
-        except Exception:
-            # Skip objects that can't be loaded or parsed
+        except json.JSONDecodeError as e:
+            # Log but skip malformed JSON objects
+            logger.warning(f"Skipping object {key}: invalid JSON - {e}")
+            return None
+        except KeyError as e:
+            # Log missing expected keys
+            logger.warning(f"Skipping object {key}: missing key - {e}")
+            return None
+        except Exception as e:
+            # Log unexpected errors with full details
+            logger.error(f"Error fetching object {key}: {type(e).__name__}: {e}")
             return None
 
     def _matches_filters(self, obj: dict[str, Any]) -> bool:
@@ -400,10 +428,16 @@ class S3Query(Generic[T]):
         return True
 
     async def _do_prefetch(self, items: list[T]) -> None:
-        """Prefetch related objects."""
+        """Prefetch related objects.
+
+        Raises:
+            NotImplementedError: This feature is not yet implemented
+        """
         # This would be implemented based on relationship definitions
-        # For now, it's a placeholder
-        pass
+        raise NotImplementedError(
+            "prefetch_related() is not yet implemented. "
+            "Use explicit relationship loading instead."
+        )
 
     async def update(self, **kwargs) -> int:
         """Update all matching objects."""

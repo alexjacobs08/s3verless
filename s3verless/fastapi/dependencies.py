@@ -95,6 +95,6 @@ def get_s3_service(model_type: Type[T]) -> S3DataService[T]:
     def _get_service(
         settings: S3verlessSettings = Depends(get_settings),
     ) -> S3DataService[T]:
-        return S3DataService[model_type](model_type, settings.aws_bucket_name)
+        return S3DataService(model_type, settings.aws_bucket_name)
 
     return _get_service

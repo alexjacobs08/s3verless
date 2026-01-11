@@ -1,5 +1,6 @@
 """Authentication service for S3verless."""
 
+import asyncio
 import hashlib
 import re
 import secrets
@@ -76,6 +77,12 @@ class S3AuthService:
         self.refresh_token_service = S3DataService[RefreshToken](
             RefreshToken, self.bucket_name
         )
+        # Lock for token rotation to prevent race conditions
+        self._token_rotation_lock = asyncio.Lock()
+        # Pre-computed dummy hash for constant-time authentication
+        # This prevents timing attacks by ensuring password verification
+        # always takes the same amount of time regardless of user existence
+        self._dummy_hash = self.pwd_context.hash("dummy_password_for_timing")
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a plain password against a hash.
@@ -99,10 +106,22 @@ class S3AuthService:
             The hashed password
         """
         # Bcrypt has a 72-byte limit, so truncate if needed
+        # We must truncate at a valid UTF-8 character boundary
         password_bytes = password.encode("utf-8")
         if len(password_bytes) > 72:
-            password_bytes = password_bytes[:72]
-            password = password_bytes.decode("utf-8", errors="ignore")
+            # Find the last valid UTF-8 character boundary at or before byte 72
+            truncated = password_bytes[:72]
+            # Decode with errors='ignore' would lose data, so we find safe boundary
+            # UTF-8 continuation bytes start with 10xxxxxx (0x80-0xBF)
+            while truncated and (truncated[-1] & 0xC0) == 0x80:
+                truncated = truncated[:-1]
+            # Also check if we're at an incomplete multi-byte sequence start
+            if truncated:
+                last_byte = truncated[-1]
+                # Check for incomplete multi-byte sequences
+                if last_byte >= 0xC0:  # Start of multi-byte but incomplete
+                    truncated = truncated[:-1]
+            password = truncated.decode("utf-8")
         return self.pwd_context.hash(password)
 
     def validate_password(self, password: str) -> tuple[bool, str]:
@@ -243,6 +262,8 @@ class S3AuthService:
     ) -> S3User | None:
         """Authenticate a user with username and password.
 
+        Uses constant-time comparison to prevent timing-based user enumeration.
+
         Args:
             s3_client: The S3 client to use
             username: The username to authenticate
@@ -252,11 +273,21 @@ class S3AuthService:
             The authenticated user if successful, None otherwise
         """
         user = await self.get_user_by_username(s3_client, username)
+
+        # Always perform password verification to prevent timing attacks
+        # Use a dummy hash if user doesn't exist
+        if user:
+            password_valid = self.verify_password(password, user.hashed_password)
+        else:
+            # Perform dummy verification to maintain constant time
+            self.verify_password(password, self._dummy_hash)
+            password_valid = False
+
         if not user:
             return None
         if not user.is_active:
             return None
-        if not self.verify_password(password, user.hashed_password):
+        if not password_valid:
             return None
         return user
 
@@ -326,7 +357,14 @@ class S3AuthService:
 
         Returns:
             Dictionary with access_token, refresh_token, token_type, and expires_in
+
+        Raises:
+            S3AuthError: If user is not active
         """
+        # Verify user is active before issuing tokens
+        if not user.is_active:
+            raise S3AuthError("User account is not active")
+
         # Create access token (short-lived, stateless)
         access_token = self.create_access_token(
             data={"sub": user.username, "user_id": str(user.id)}
@@ -364,6 +402,9 @@ class S3AuthService:
         This method implements token rotation - the old refresh token
         is revoked and a new one is issued with each refresh.
 
+        Uses a lock to prevent race conditions where two concurrent
+        refresh requests could both validate the same token.
+
         Args:
             s3_client: The S3 client to use
             refresh_token: The refresh token to validate
@@ -376,32 +417,35 @@ class S3AuthService:
         """
         token_hash = self._hash_token(refresh_token)
 
-        # Find the refresh token in S3
-        tokens, _ = await self.refresh_token_service.list_by_prefix(
-            s3_client, limit=1000
-        )
+        # Use lock to prevent race conditions in token rotation
+        async with self._token_rotation_lock:
+            # Find the refresh token in S3
+            tokens, _ = await self.refresh_token_service.list_by_prefix(
+                s3_client, limit=1000
+            )
 
-        valid_token = None
-        for t in tokens:
-            if t.token_hash == token_hash and not t.revoked:
-                if t.expires_at > datetime.now(timezone.utc):
-                    valid_token = t
-                    break
+            valid_token = None
+            for t in tokens:
+                if t.token_hash == token_hash and not t.revoked:
+                    if t.expires_at > datetime.now(timezone.utc):
+                        valid_token = t
+                        break
 
-        if not valid_token:
-            raise S3AuthError("Invalid or expired refresh token")
+            if not valid_token:
+                raise S3AuthError("Invalid or expired refresh token")
 
-        # Get the user
+            # Revoke old refresh token FIRST (before user lookup)
+            # This prevents race conditions where another request could use this token
+            valid_token.revoked = True
+            valid_token.revoked_at = datetime.now(timezone.utc)
+            await self.refresh_token_service.update(
+                s3_client, valid_token.id, valid_token
+            )
+
+        # Get the user (outside lock since token is already revoked)
         user = await self.user_service.get(s3_client, valid_token.user_id)
         if not user or not user.is_active:
             raise S3AuthError("User not found or inactive")
-
-        # Revoke old refresh token (rotation)
-        valid_token.revoked = True
-        valid_token.revoked_at = datetime.now(timezone.utc)
-        await self.refresh_token_service.update(
-            s3_client, valid_token.id, valid_token
-        )
 
         # Issue new token pair
         return await self.create_token_pair(

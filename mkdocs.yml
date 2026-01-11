@@ -1,0 +1,89 @@
+site_name: S3verless Documentation
+site_url: https://s3verless.org/guide/
+site_description: Use S3 as your database - Python framework documentation
+site_author: S3verless Contributors
+
+repo_name: alexjacobs08/s3verless
+repo_url: https://github.com/alexjacobs08/s3verless
+
+docs_dir: docs_src
+site_dir: docs/guide
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: green
+      accent: light blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: green
+      accent: light blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+  logo: https://em-content.zobj.net/source/apple/391/bucket_1faa3.png
+  favicon: https://em-content.zobj.net/source/apple/391/bucket_1faa3.png
+
+nav:
+  - Home: index.md
+  - Getting Started: guide-getting-started.md
+  - Guides:
+    - Models: guide-models.md
+    - Queries: guide-queries.md
+    - Authentication: guide-auth.md
+    - Relationships: guide-relationships.md
+    - Migrations: guide-migrations.md
+    - Caching: guide-caching.md
+    - File Storage: guide-storage.md
+    - Testing: guide-testing.md
+    - Deployment: guide-deployment.md
+  - API Reference: api-reference.md
+
+plugins:
+  - search
+  - offline
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/alexjacobs08/s3verless
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/s3verless/
+
+extra_css:
+  - stylesheets/extra.css
+
+copyright: Copyright &copy; 2025 S3verless Contributors

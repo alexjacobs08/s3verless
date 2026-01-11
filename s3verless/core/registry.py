@@ -1,5 +1,6 @@
 """Registry for S3 models and configuration."""
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -8,6 +9,8 @@ from fastapi import APIRouter
 
 if TYPE_CHECKING:
     from s3verless.core.base import BaseS3Model
+
+logger = logging.getLogger(__name__)
 
 # Global registry for model classes
 _model_registry: dict[str, type["BaseS3Model"]] = {}
@@ -60,9 +63,7 @@ def register_model(model_cls: type["BaseS3Model"]) -> None:
         # Potentially warn about re-registration if needed
         pass
     _model_registry[model_name] = model_cls
-    print(
-        f"Registered s3verless model: {model_name}"
-    )  # Temporary print for verification
+    logger.debug(f"Registered s3verless model: {model_name}")
 
 
 def _ensure_metadata(model_name: str) -> None:
@@ -114,7 +115,7 @@ def set_base_s3_path(path: str) -> None:
         _base_s3_path = f"{path}/"
     else:
         _base_s3_path = path
-    print(f"s3verless base path set to: '{_base_s3_path}'")  # Temporary print
+    logger.debug("S3verless base path set to: '%s'", _base_s3_path)
 
 
 def get_base_s3_path() -> str:

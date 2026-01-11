@@ -1,6 +1,7 @@
 """Seed data loading utilities for S3verless."""
 
 import json
+import logging
 from pathlib import Path
 from typing import Type
 
@@ -8,6 +9,8 @@ from aiobotocore.client import AioBaseClient
 
 from s3verless.core.base import BaseS3Model
 from s3verless.core.service import S3DataService
+
+logger = logging.getLogger(__name__)
 
 
 class SeedLoader:
@@ -54,14 +57,24 @@ class SeedLoader:
         """
         service = S3DataService(model_class, bucket_name)
         count = 0
-        for item in data:
+        failed = 0
+        for idx, item in enumerate(data):
             try:
                 instance = model_class(**item)
                 await service.create(s3_client, instance)
                 count += 1
-            except Exception:
-                # Skip invalid items but continue seeding
+            except Exception as e:
+                # Log and count failures but continue seeding
+                failed += 1
+                logger.warning(
+                    f"Failed to seed {model_class.__name__} item {idx}: {e}"
+                )
                 continue
+
+        if failed > 0:
+            logger.info(
+                f"Seeded {count} {model_class.__name__} records, {failed} failed"
+            )
         return count
 
     @staticmethod

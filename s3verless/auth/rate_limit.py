@@ -62,18 +62,25 @@ class RateLimiter:
         self,
         limits: Dict[str, RateLimitConfig] | None = None,
         cleanup_interval: int = 300,
+        trusted_proxies: List[str] | None = None,
+        trust_x_forwarded_for: bool = False,
     ):
         """Initialize the rate limiter.
 
         Args:
             limits: Custom rate limit configurations
             cleanup_interval: How often to clean up expired entries (seconds)
+            trusted_proxies: List of trusted proxy IPs that can set X-Forwarded-For
+            trust_x_forwarded_for: If True, always trust X-Forwarded-For header.
+                                   Only enable if behind a trusted reverse proxy.
         """
         self._storage: Dict[str, RateLimitEntry] = defaultdict(RateLimitEntry)
         self._lock = asyncio.Lock()
         self.limits = {**self.DEFAULT_LIMITS, **(limits or {})}
         self.cleanup_interval = cleanup_interval
         self._last_cleanup = datetime.now(timezone.utc)
+        self.trusted_proxies = set(trusted_proxies or [])
+        self.trust_x_forwarded_for = trust_x_forwarded_for
 
     def _get_key(
         self, request: Request, key_func: str, endpoint: str | None = None
@@ -88,13 +95,17 @@ class RateLimiter:
         Returns:
             The rate limit key
         """
-        # Get client IP
-        client_ip = request.client.host if request.client else "unknown"
+        # Get client IP from the connection
+        direct_ip = request.client.host if request.client else "unknown"
+        client_ip = direct_ip
 
-        # Check for X-Forwarded-For header
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            client_ip = forwarded.split(",")[0].strip()
+        # Only trust X-Forwarded-For if explicitly enabled or from trusted proxy
+        # This prevents attackers from spoofing their IP address
+        if self.trust_x_forwarded_for or direct_ip in self.trusted_proxies:
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                # Take the leftmost (original client) IP
+                client_ip = forwarded.split(",")[0].strip()
 
         if key_func == "ip":
             return f"ip:{client_ip}"

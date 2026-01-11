@@ -1,12 +1,17 @@
 """Presigned URL upload handling for S3verless."""
 
+import logging
 import mimetypes
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import ClassVar, List
 
+from botocore.exceptions import ClientError
+
 from s3verless.core.base import BaseS3Model
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -182,12 +187,12 @@ class PresignedUploadService:
                 Fields=fields,
                 ExpiresIn=self.config.expiration_seconds,
             )
-        except Exception:
-            # Fallback for clients that don't support presigned POST
-            presigned = {
-                "url": f"https://{self.bucket_name}.s3.amazonaws.com",
-                "fields": {"key": s3_key, **fields},
-            }
+        except ClientError as e:
+            logger.error(f"Failed to generate presigned URL: {e}")
+            raise ValueError(f"Failed to generate presigned URL: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error generating presigned URL: {e}")
+            raise ValueError(f"Failed to generate presigned URL: {e}")
 
         return {
             "url": presigned["url"],
@@ -272,7 +277,14 @@ class PresignedUploadService:
             service = S3DataService(UploadedFile, self.bucket_name)
             return await service.create(s3_client, file_record)
 
-        except Exception:
+        except ClientError as e:
+            if e.response["Error"]["Code"] in ("NoSuchKey", "404", "NotFound"):
+                logger.debug(f"Upload not found at {s3_key}")
+                return None
+            logger.error(f"Failed to confirm upload at {s3_key}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error confirming upload at {s3_key}: {e}")
             return None
 
     async def delete_file(

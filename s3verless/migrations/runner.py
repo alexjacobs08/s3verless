@@ -2,12 +2,17 @@
 
 import importlib.util
 import json
+import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
+from botocore.exceptions import ClientError
+
 from s3verless.migrations.base import Migration, MigrationRecord
+
+logger = logging.getLogger(__name__)
 
 
 class MigrationRunner:
@@ -76,7 +81,8 @@ class MigrationRunner:
                     attr = getattr(module, attr_name)
                     if isinstance(attr, Migration):
                         self._migrations.append(attr)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to load migration from {file_path}: {e}")
                 continue
 
         # Sort by version
@@ -106,7 +112,12 @@ class MigrationRunner:
             body = await response["Body"].read()
             data = json.loads(body.decode("utf-8"))
             return [r["version"] for r in data.get("records", [])]
-        except Exception:
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "NoSuchKey":
+                logger.warning(f"Failed to load migration history: {e}")
+            return []
+        except Exception as e:
+            logger.warning(f"Unexpected error loading migration history: {e}")
             return []
 
     async def _save_migration_record(self, record: MigrationRecord) -> None:
@@ -119,7 +130,12 @@ class MigrationRunner:
             )
             body = await response["Body"].read()
             data = json.loads(body.decode("utf-8"))
-        except Exception:
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "NoSuchKey":
+                logger.warning(f"Failed to load migration records: {e}")
+            data = {"records": []}
+        except Exception as e:
+            logger.warning(f"Unexpected error loading migration records: {e}")
             data = {"records": []}
 
         # Add new record
@@ -142,7 +158,12 @@ class MigrationRunner:
             )
             body = await response["Body"].read()
             data = json.loads(body.decode("utf-8"))
-        except Exception:
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "NoSuchKey":
+                logger.warning(f"Failed to load migration records for removal: {e}")
+            return
+        except Exception as e:
+            logger.warning(f"Unexpected error loading migration records for removal: {e}")
             return
 
         # Remove the record
@@ -250,13 +271,15 @@ class MigrationRunner:
                     )
                     body = await obj_response["Body"].read()
                     data = json.loads(body.decode("utf-8"))
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Failed to load object {key} during migration {migration.version}: {e}")
                     continue
 
                 # Apply migration
                 try:
                     new_data = migration.apply(data)
-                except Exception:
+                except Exception as e:
+                    logger.error(f"Migration {migration.version} failed on object {key}: {e}")
                     continue
 
                 # Save transformed object
@@ -366,13 +389,15 @@ class MigrationRunner:
                     )
                     body = await obj_response["Body"].read()
                     data = json.loads(body.decode("utf-8"))
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Failed to load object {key} during rollback {migration.version}: {e}")
                     continue
 
                 # Apply rollback
                 try:
                     new_data = migration.rollback(data)
-                except Exception:
+                except Exception as e:
+                    logger.error(f"Rollback {migration.version} failed on object {key}: {e}")
                     continue
 
                 # Save rolled-back object

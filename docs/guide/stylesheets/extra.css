@@ -1,0 +1,50 @@
+/* Custom styles for S3verless docs */
+
+:root {
+  --md-primary-fg-color: #22c55e;
+  --md-primary-fg-color--light: #4ade80;
+  --md-primary-fg-color--dark: #16a34a;
+  --md-accent-fg-color: #60a5fa;
+}
+
+/* Logo styling */
+.md-header__button.md-logo img {
+  height: 1.5rem;
+}
+
+/* Code block styling */
+.highlight code {
+  font-size: 0.85rem;
+}
+
+/* Card grid for home page */
+.grid.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.grid.cards > ul {
+  display: contents;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.grid.cards > ul > li {
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.grid.cards > ul > li:hover {
+  border-color: var(--md-primary-fg-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Back to main site link */
+.md-header__topic {
+  font-weight: 600;
+}

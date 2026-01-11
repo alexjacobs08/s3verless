@@ -1,5 +1,6 @@
 """Mock S3 client for testing S3verless applications."""
 
+import hashlib
 import json
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -91,11 +92,13 @@ class InMemoryS3:
             Body = Body.encode("utf-8")
 
         self._storage[Bucket][Key] = Body
+        # Use MD5 for stable ETag (matches real S3 behavior)
+        etag = hashlib.md5(Body).hexdigest()
         self._metadata[Bucket][Key] = {
             "ContentType": ContentType,
             "ContentLength": len(Body),
             "LastModified": datetime.now(timezone.utc),
-            "ETag": f'"{hash(Body)}"',
+            "ETag": f'"{etag}"',
             **{k: v for k, v in kwargs.items() if k.startswith("x-amz-meta-")},
         }
 
@@ -209,7 +212,10 @@ class InMemoryS3:
             try:
                 start_idx = int(ContinuationToken)
             except ValueError:
-                start_idx = 0
+                raise ClientError(
+                    {"Error": {"Code": "InvalidArgument", "Message": "Invalid continuation token"}},
+                    "ListObjectsV2"
+                )
 
         end_idx = start_idx + MaxKeys
         page_keys = all_keys[start_idx:end_idx]

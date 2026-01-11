@@ -1,6 +1,7 @@
 """S3verless FastAPI application factory."""
 
 import importlib
+import logging
 import pkgutil
 from typing import TYPE_CHECKING
 
@@ -18,6 +19,8 @@ from s3verless.core.registry import get_all_metadata, set_base_s3_path
 from s3verless.core.settings import S3verlessSettings
 from s3verless.fastapi.admin import generate_admin_interface
 from s3verless.fastapi.router_generator import generate_crud_router
+
+logger = logging.getLogger(__name__)
 
 
 def discover_models(package_path: str) -> list[type["BaseS3Model"]]:
@@ -55,7 +58,8 @@ def discover_models(package_path: str) -> list[type["BaseS3Model"]]:
                 ):
                     models.append(attr)
 
-        except ImportError:
+        except ImportError as e:
+            logger.warning(f"Failed to import module {modname}: {e}")
             continue
 
     return models
@@ -128,24 +132,25 @@ class S3verless:
 
     async def _ensure_bucket_exists(self):
         """Ensure the S3 bucket exists."""
-        s3_client = self.s3_manager.get_sync_client()
         bucket_name = self.settings.aws_bucket_name
 
-        try:
-            s3_client.head_bucket(Bucket=bucket_name)
-            print(f"✅ Bucket '{bucket_name}' exists")
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "404":
-                print(f"📦 Creating bucket '{bucket_name}'...")
-                try:
-                    s3_client.create_bucket(Bucket=bucket_name)
-                    print(f"✅ Bucket '{bucket_name}' created")
-                except ClientError as create_error:
-                    print(f"❌ Failed to create bucket: {create_error}")
+        async with self.s3_manager.get_async_client() as s3_client:
+            try:
+                await s3_client.head_bucket(Bucket=bucket_name)
+                logger.info(f"Bucket '{bucket_name}' exists")
+            except ClientError as e:
+                error_code = e.response["Error"]["Code"]
+                if error_code in ("404", "NoSuchBucket", "NotFound"):
+                    logger.info(f"Creating bucket '{bucket_name}'...")
+                    try:
+                        await s3_client.create_bucket(Bucket=bucket_name)
+                        logger.info(f"Bucket '{bucket_name}' created")
+                    except ClientError as create_error:
+                        logger.error(f"Failed to create bucket: {create_error}")
+                        raise
+                else:
+                    logger.error(f"Error checking bucket: {e}")
                     raise
-            else:
-                print(f"❌ Error checking bucket: {e}")
-                raise
 
     async def _create_default_admin(self):
         """Create default admin user if configured."""

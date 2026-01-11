@@ -2,9 +2,25 @@
 
 import hashlib
 import json
+from datetime import datetime
+from decimal import Decimal
 from typing import Any, Type
+from uuid import UUID
 
 from s3verless.core.base import BaseS3Model
+
+
+def _json_serializer(obj: Any) -> str:
+    """Custom JSON serializer for cache key generation."""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, UUID):
+        return str(obj)
+    elif isinstance(obj, Decimal):
+        return str(obj)
+    elif hasattr(obj, "__dict__"):
+        return str(obj.__dict__)
+    return str(obj)
 
 
 class CacheKeyBuilder:
@@ -71,8 +87,10 @@ class CacheKeyBuilder:
             "page_size": page_size,
         }
 
-        query_str = json.dumps(query_parts, sort_keys=True)
-        query_hash = hashlib.md5(query_str.encode()).hexdigest()[:12]
+        # Use custom serializer to handle non-JSON types in filters
+        query_str = json.dumps(query_parts, sort_keys=True, default=_json_serializer)
+        # Use SHA256 for better collision resistance (full hash)
+        query_hash = hashlib.sha256(query_str.encode()).hexdigest()[:16]
 
         return f"{self.prefix}:list:{model_class.__name__}:{query_hash}"
 
@@ -91,8 +109,10 @@ class CacheKeyBuilder:
             Cache key for the count query
         """
         if filters:
-            filter_str = json.dumps(filters, sort_keys=True)
-            filter_hash = hashlib.md5(filter_str.encode()).hexdigest()[:12]
+            # Use custom serializer to handle non-JSON types
+            filter_str = json.dumps(filters, sort_keys=True, default=_json_serializer)
+            # Use SHA256 for better collision resistance
+            filter_hash = hashlib.sha256(filter_str.encode()).hexdigest()[:16]
             return f"{self.prefix}:count:{model_class.__name__}:{filter_hash}"
         return f"{self.prefix}:count:{model_class.__name__}:all"
 

@@ -1,6 +1,7 @@
 """S3 client manager for handling S3 connections and operations."""
 
 import asyncio
+import threading
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -260,6 +261,7 @@ class S3ClientManager:
     _sync_client: BaseClient | None = None
     _async_session = None
     _pool: S3ClientPool | None = None
+    _lock: threading.Lock = threading.Lock()
 
     def __new__(
         cls,
@@ -267,11 +269,14 @@ class S3ClientManager:
         pool_config: PoolConfig | None = None,
     ) -> "S3ClientManager":
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialize(
-                settings or S3verlessSettings(),
-                pool_config,
-            )
+            with cls._lock:
+                # Double-check locking pattern
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._initialize(
+                        settings or S3verlessSettings(),
+                        pool_config,
+                    )
         return cls._instance
 
     def _initialize(
@@ -393,7 +398,8 @@ class S3ClientManager:
             client.head_bucket(Bucket=self.settings.aws_bucket_name)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
-            if error_code == "404":
+            # Handle both numeric codes and named codes
+            if error_code in ("404", "NoSuchBucket", "NotFound"):
                 try:
                     client.create_bucket(Bucket=self.settings.aws_bucket_name)
                 except ClientError as create_error:

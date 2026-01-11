@@ -6,10 +6,13 @@ revoking access tokens before they expire.
 
 import asyncio
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Set
 
 from botocore.exceptions import ClientError
+
+logger = logging.getLogger(__name__)
 
 
 class TokenBlacklist:
@@ -60,10 +63,14 @@ class TokenBlacklist:
             # Add to cache immediately
             self._cache.add(token_jti)
 
-            # Persist to S3 (fire and forget for performance)
-            asyncio.create_task(
-                self._persist_entry(s3_client, token_jti, expires_at)
-            )
+        # Persist to S3 and await the result for durability
+        try:
+            await self._persist_entry(s3_client, token_jti, expires_at)
+        except Exception as e:
+            # Log the error but keep the entry in cache
+            # On restart, this token won't be blacklisted, but that's
+            # better than silently failing
+            logger.error(f"Failed to persist blacklist entry for {token_jti}: {e}")
 
     async def is_blacklisted(
         self,
@@ -123,13 +130,18 @@ class TokenBlacklist:
                         seconds=self.cache_ttl_seconds
                     )
                 else:
-                    raise
-            except Exception:
-                # On any error, use empty cache
-                self._cache = set()
-                self._cache_expires = datetime.now(timezone.utc) + timedelta(
-                    seconds=self.cache_ttl_seconds
-                )
+                    # Log error but keep existing cache data if available
+                    logger.error(f"S3 error loading blacklist: {e}")
+                    # Don't clear cache on error - keep stale data rather than lose blacklist
+                    if self._cache_expires is None:
+                        # First load failed, set a short retry interval
+                        self._cache_expires = datetime.now(timezone.utc) + timedelta(seconds=30)
+            except Exception as e:
+                # Log unexpected errors
+                logger.error(f"Unexpected error loading blacklist: {e}")
+                # Don't clear cache - keep stale data if available
+                if self._cache_expires is None:
+                    self._cache_expires = datetime.now(timezone.utc) + timedelta(seconds=30)
 
     async def _persist_entry(
         self,
@@ -175,9 +187,12 @@ class TokenBlacklist:
                 Body=json.dumps(data).encode("utf-8"),
                 ContentType="application/json",
             )
-        except Exception:
-            # Log error but don't fail - cache still has the entry
-            pass
+        except ClientError as e:
+            logger.error(f"S3 error persisting blacklist entry: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error persisting blacklist entry: {e}")
+            raise
 
     async def cleanup(self, s3_client) -> int:
         """Clean up expired entries from the blacklist.
