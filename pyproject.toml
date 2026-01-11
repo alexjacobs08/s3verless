@@ -1,6 +1,6 @@
 [project]
 name = "s3verless"
-version = "0.1.1"
+version = "0.2.0"
 description = "A framework for building serverless applications using S3 as a backend"
 authors = [
     {name = "S3verless Contributors", email = "alex.jacobs08+s3verless@gmail.com"}
@@ -47,6 +47,16 @@ dev = [
     "ruff>=0.7.0",
     "moto[s3]>=5.0.18",
     "httpx>=0.27.0",
+]
+faker = [
+    "faker>=22.0.0",
+]
+redis = [
+    "redis>=5.0.0",
+]
+all = [
+    "faker>=22.0.0",
+    "redis>=5.0.0",
 ]
 
 [project.scripts]

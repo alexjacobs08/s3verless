@@ -2,14 +2,21 @@
 
 import asyncio
 import importlib.util
+import json
 import sys
 from pathlib import Path
+from typing import Type
 
 import click
 
 from s3verless import S3verlessSettings
+from s3verless.core.base import BaseS3Model
 from s3verless.core.client import S3ClientManager
-from s3verless.core.registry import get_all_metadata, get_all_models
+from s3verless.core.registry import (
+    get_all_metadata,
+    get_all_models,
+    set_base_s3_path,
+)
 
 
 @click.group()
@@ -92,7 +99,7 @@ from decimal import Decimal
 class Product(BaseS3Model):
     """Product model."""
     _plural_name = "products"
-    
+
     name: str = Field(..., min_length=1, max_length=200)
     description: str
     price: Decimal = Field(..., ge=0, decimal_places=2)
@@ -104,7 +111,7 @@ class Product(BaseS3Model):
 class Customer(BaseS3Model):
     """Customer model."""
     _plural_name = "customers"
-    
+
     name: str
     email: str
     phone: str | None = None
@@ -121,7 +128,7 @@ import uuid
 class Author(BaseS3Model):
     """Author model."""
     _plural_name = "authors"
-    
+
     name: str
     email: str
     bio: str | None = None
@@ -130,7 +137,7 @@ class Author(BaseS3Model):
 class Post(BaseS3Model):
     """Blog post model."""
     _plural_name = "posts"
-    
+
     title: str = Field(..., min_length=1, max_length=200)
     content: str
     author_id: uuid.UUID
@@ -148,7 +155,7 @@ from typing import Optional
 class Item(BaseS3Model):
     """Sample item model."""
     _plural_name = "items"
-    
+
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
     value: float = Field(0.0)
@@ -272,12 +279,7 @@ def list_data(bucket, prefix, endpoint):
     async def _list():
         settings = S3verlessSettings(aws_bucket_name=bucket, aws_url=endpoint)
 
-        manager = S3ClientManager(
-            access_key_id=settings.aws_access_key_id,
-            secret_access_key=settings.aws_secret_access_key,
-            region_name=settings.aws_default_region,
-            endpoint_url=endpoint,
-        )
+        manager = S3ClientManager(settings)
 
         async with manager.get_async_client() as s3_client:
             response = await s3_client.list_objects_v2(
@@ -299,15 +301,125 @@ def list_data(bucket, prefix, endpoint):
     asyncio.run(_list())
 
 
+def _load_model_from_file(model_file: str, model_name: str) -> Type[BaseS3Model] | None:
+    """Load a specific model class from a Python file."""
+    spec = importlib.util.spec_from_file_location("user_models", model_file)
+    if not spec or not spec.loader:
+        return None
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["user_models"] = module
+    spec.loader.exec_module(module)
+
+    # Get all models from registry
+    models = get_all_models()
+    return models.get(model_name)
+
+
 @cli.command()
 @click.argument("model_name")
-@click.option("--app", default="main.py", help="Application file")
-def seed(model_name, app):
-    """Seed data for a specific model."""
-    click.echo(f"Seeding data for {model_name}...")
+@click.option("--count", default=10, help="Number of records to generate")
+@click.option("--file", "seed_file", type=click.Path(exists=True), help="JSON file with seed data")
+@click.option("--clear", is_flag=True, help="Clear existing data before seeding")
+@click.option("--bucket", required=True, help="S3 bucket name")
+@click.option("--endpoint", help="S3 endpoint URL (for LocalStack)")
+@click.option("--app", "app_file", default="main.py", help="Application file containing models")
+@click.option("--base-path", default="s3verless-data/", help="S3 base path for data")
+@click.option("--locale", default="en_US", help="Locale for fake data generation")
+@click.option("--output", type=click.Path(), help="Output generated data to JSON file (dry run)")
+def seed(model_name, count, seed_file, clear, bucket, endpoint, app_file, base_path, locale, output):
+    """Seed data for a specific model.
 
-    # This would import the app and create sample data
-    click.echo("🌱 Feature coming soon!")
+    Examples:
+        # Generate 50 fake products
+        s3verless seed Product --count 50 --bucket my-bucket
+
+        # Load seed data from file
+        s3verless seed Product --file seeds/products.json --bucket my-bucket
+
+        # Clear and reseed
+        s3verless seed Product --clear --count 20 --bucket my-bucket
+
+        # Dry run - output to file without saving to S3
+        s3verless seed Product --count 10 --output products.json --bucket my-bucket
+    """
+    from s3verless.seeding.generator import DataGenerator
+    from s3verless.seeding.loader import SeedLoader
+
+    async def _seed():
+        # Set base S3 path
+        set_base_s3_path(base_path)
+
+        # Load the model
+        model_class = _load_model_from_file(app_file, model_name)
+        if not model_class:
+            click.echo(f"❌ Model '{model_name}' not found in {app_file}")
+            click.echo("Available models:")
+            models = get_all_models()
+            for name in models:
+                click.echo(f"  - {name}")
+            return
+
+        click.echo(f"🌱 Seeding {model_name}...")
+
+        # Generate or load data
+        if seed_file:
+            click.echo(f"📄 Loading data from {seed_file}")
+            data = SeedLoader.load_from_file(seed_file)
+            click.echo(f"   Found {len(data)} records")
+        else:
+            click.echo(f"🎲 Generating {count} fake records (locale: {locale})")
+            generator = DataGenerator(locale=locale)
+            data = generator.generate_instances(model_class, count)
+
+        # Dry run - output to file
+        if output:
+            output_path = Path(output)
+            # Convert data to JSON-serializable format
+            serializable_data = []
+            for item in data:
+                serialized = {}
+                for key, value in item.items():
+                    if hasattr(value, 'isoformat'):
+                        serialized[key] = value.isoformat()
+                    elif hasattr(value, '__str__') and not isinstance(value, (str, int, float, bool, list, dict, type(None))):
+                        serialized[key] = str(value)
+                    else:
+                        serialized[key] = value
+                serializable_data.append(serialized)
+
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(serializable_data, f, indent=2, default=str)
+            click.echo(f"✅ Data written to {output_path}")
+            click.echo(f"   (Dry run - no data saved to S3)")
+            return
+
+        # Connect to S3 and seed
+        settings = S3verlessSettings(
+            aws_bucket_name=bucket,
+            aws_url=endpoint,
+            s3_base_path=base_path,
+        )
+        manager = S3ClientManager(settings)
+
+        async with manager.get_async_client() as s3_client:
+            # Clear existing data if requested
+            deleted = 0
+            if clear:
+                click.echo(f"🗑️  Clearing existing {model_name} data...")
+                deleted = await SeedLoader.clear_model(s3_client, model_class, bucket)
+                click.echo(f"   Deleted {deleted} records")
+
+            # Seed the data
+            click.echo(f"💾 Saving to S3 bucket '{bucket}'...")
+            created = await SeedLoader.seed_model(s3_client, model_class, data, bucket)
+
+            click.echo(f"\n✅ Seeding complete!")
+            if deleted:
+                click.echo(f"   🗑️  Deleted: {deleted} records")
+            click.echo(f"   ✨ Created: {created} records")
+
+    asyncio.run(_seed())
 
 
 @cli.command()
@@ -316,6 +428,123 @@ def version():
     from s3verless import __version__
 
     click.echo(f"S3verless version: {__version__}")
+
+
+# Migration commands group
+@cli.group()
+def migrate():
+    """Database migration commands."""
+    pass
+
+
+@migrate.command("run")
+@click.option("--bucket", required=True, help="S3 bucket name")
+@click.option("--endpoint", help="S3 endpoint URL (for LocalStack)")
+@click.option("--dir", "migrations_dir", default="migrations", help="Migrations directory")
+@click.option("--base-path", default="s3verless-data/", help="S3 base path for data")
+def migrate_run(bucket, endpoint, migrations_dir, base_path):
+    """Run pending migrations."""
+    from s3verless.migrations import MigrationRunner
+
+    async def _run():
+        set_base_s3_path(base_path)
+
+        settings = S3verlessSettings(
+            aws_bucket_name=bucket,
+            aws_url=endpoint,
+            s3_base_path=base_path,
+        )
+        manager = S3ClientManager(settings)
+
+        async with manager.get_async_client() as s3_client:
+            runner = MigrationRunner(s3_client, bucket, Path(migrations_dir))
+            results = await runner.run_pending()
+
+            if not results:
+                click.echo("✅ No pending migrations")
+                return
+
+            for r in results:
+                click.echo(f"✓ {r['version']}: {r['description']}")
+
+            click.echo(f"\n✅ Applied {len(results)} migration(s)")
+
+    asyncio.run(_run())
+
+
+@migrate.command("status")
+@click.option("--bucket", required=True, help="S3 bucket name")
+@click.option("--endpoint", help="S3 endpoint URL (for LocalStack)")
+@click.option("--dir", "migrations_dir", default="migrations", help="Migrations directory")
+@click.option("--base-path", default="s3verless-data/", help="S3 base path for data")
+def migrate_status(bucket, endpoint, migrations_dir, base_path):
+    """Show migration status."""
+    from s3verless.migrations import MigrationRunner
+
+    async def _status():
+        set_base_s3_path(base_path)
+
+        settings = S3verlessSettings(
+            aws_bucket_name=bucket,
+            aws_url=endpoint,
+            s3_base_path=base_path,
+        )
+        manager = S3ClientManager(settings)
+
+        async with manager.get_async_client() as s3_client:
+            runner = MigrationRunner(s3_client, bucket, Path(migrations_dir))
+            applied = await runner.get_applied_migrations()
+            pending = runner.get_pending_migrations()
+
+            click.echo("\n📋 Migration Status:\n")
+
+            if applied:
+                click.echo("Applied:")
+                for version in applied:
+                    click.echo(f"  ✓ {version}")
+            else:
+                click.echo("Applied: (none)")
+
+            if pending:
+                click.echo("\nPending:")
+                for migration in pending:
+                    click.echo(f"  ○ {migration.version}: {migration.description}")
+            else:
+                click.echo("\nPending: (none)")
+
+    asyncio.run(_status())
+
+
+@migrate.command("rollback")
+@click.argument("version")
+@click.option("--bucket", required=True, help="S3 bucket name")
+@click.option("--endpoint", help="S3 endpoint URL (for LocalStack)")
+@click.option("--dir", "migrations_dir", default="migrations", help="Migrations directory")
+@click.option("--base-path", default="s3verless-data/", help="S3 base path for data")
+def migrate_rollback(version, bucket, endpoint, migrations_dir, base_path):
+    """Rollback a specific migration."""
+    from s3verless.migrations import MigrationRunner
+
+    async def _rollback():
+        set_base_s3_path(base_path)
+
+        settings = S3verlessSettings(
+            aws_bucket_name=bucket,
+            aws_url=endpoint,
+            s3_base_path=base_path,
+        )
+        manager = S3ClientManager(settings)
+
+        async with manager.get_async_client() as s3_client:
+            runner = MigrationRunner(s3_client, bucket, Path(migrations_dir))
+
+            try:
+                result = await runner.rollback(version)
+                click.echo(f"✓ Rolled back {result['version']}: {result['description']}")
+            except ValueError as e:
+                click.echo(f"❌ {e}")
+
+    asyncio.run(_rollback())
 
 
 if __name__ == "__main__":

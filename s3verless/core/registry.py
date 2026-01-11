@@ -177,3 +177,28 @@ def add_model_hook(model_name: str, event: str, callback: Callable) -> None:
         if event not in _model_metadata[model_name].hooks:
             _model_metadata[model_name].hooks[event] = []
         _model_metadata[model_name].hooks[event].append(callback)
+
+
+def get_model_by_name(model_name: str) -> type["BaseS3Model"] | None:
+    """Get a registered model class by name.
+
+    Alias for get_model() for clarity.
+
+    Args:
+        model_name: The name of the model class
+
+    Returns:
+        The model class or None if not found
+    """
+    return _model_registry.get(model_name)
+
+
+def reset_registry() -> None:
+    """Reset the registry to its initial state.
+
+    This is primarily useful for testing to ensure clean state between tests.
+    """
+    global _model_registry, _model_metadata, _base_s3_path
+    _model_registry.clear()
+    _model_metadata.clear()
+    _base_s3_path = ""

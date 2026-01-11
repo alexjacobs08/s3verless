@@ -19,7 +19,8 @@ class S3verlessSettings(BaseSettings):
         aws_retry_attempts: Number of retry attempts for S3 operations
         secret_key: Secret key for JWT token signing
         algorithm: JWT algorithm to use
-        access_token_expire_minutes: Token expiration time in minutes
+        access_token_expire_minutes: Access token expiration time in minutes
+        refresh_token_expire_days: Refresh token expiration time in days
         debug: Enable debug mode
         app_name: Application name
         s3_base_path: Base path prefix for all S3 objects
@@ -40,7 +41,8 @@ class S3verlessSettings(BaseSettings):
     # Authentication Settings
     secret_key: str
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
 
     # Default Admin Account (for development/setup)
     default_admin_username: str | None = "admin"
@@ -52,6 +54,16 @@ class S3verlessSettings(BaseSettings):
     debug: bool = False
     app_name: str = "S3verless App"
     s3_base_path: str = ""
+
+    # Cache Settings
+    cache_enabled: bool = True
+    cache_default_ttl: int = 300  # 5 minutes
+    cache_max_size: int = 1000
+
+    # Rate Limiting Settings
+    rate_limit_enabled: bool = True
+    rate_limit_login_requests: int = 5
+    rate_limit_login_window: int = 60  # seconds
 
     def get_s3_config(self) -> dict:
         """Get S3 configuration as a dictionary.
@@ -78,4 +90,17 @@ class S3verlessSettings(BaseSettings):
             "secret_key": self.secret_key,
             "algorithm": self.algorithm,
             "access_token_expire_minutes": self.access_token_expire_minutes,
+            "refresh_token_expire_days": self.refresh_token_expire_days,
+        }
+
+    def get_cache_config(self) -> dict:
+        """Get cache configuration as a dictionary.
+
+        Returns:
+            Dictionary of cache configuration values
+        """
+        return {
+            "enabled": self.cache_enabled,
+            "default_ttl": self.cache_default_ttl,
+            "max_size": self.cache_max_size,
         }

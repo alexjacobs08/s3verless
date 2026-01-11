@@ -1,6 +1,9 @@
 """Authentication service for S3verless."""
 
+import hashlib
 import re
+import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from aiobotocore.client import AioBaseClient
@@ -8,7 +11,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import EmailStr
 
-from s3verless.auth.models import S3User
+from s3verless.auth.models import RefreshToken, S3User
 from s3verless.core.exceptions import S3AuthError, S3ValidationError
 from s3verless.core.service import S3DataService
 from s3verless.core.settings import S3verlessSettings
@@ -26,7 +29,8 @@ class S3AuthService:
     """Authentication service for S3verless.
 
     This service handles user authentication, password hashing,
-    token generation/validation, and user management.
+    token generation/validation, and user management. It supports
+    both access tokens (short-lived) and refresh tokens (long-lived).
     """
 
     def __init__(
@@ -34,7 +38,8 @@ class S3AuthService:
         settings: S3verlessSettings | None = None,
         secret_key: str | None = None,
         algorithm: str = "HS256",
-        access_token_expire_minutes: int = 30,
+        access_token_expire_minutes: int = 15,
+        refresh_token_expire_days: int = 7,
         bucket_name: str | None = None,
     ):
         """Initialize the auth service.
@@ -43,13 +48,19 @@ class S3AuthService:
             settings: S3verlessSettings instance (preferred)
             secret_key: Secret key for JWT token signing (if settings not provided)
             algorithm: JWT algorithm to use
-            access_token_expire_minutes: Token expiration time in minutes
+            access_token_expire_minutes: Access token expiration in minutes
+            refresh_token_expire_days: Refresh token expiration in days
             bucket_name: S3 bucket name (optional, defaults to settings)
         """
         if settings:
             self.secret_key = settings.secret_key
             self.algorithm = settings.algorithm
-            self.access_token_expire_minutes = settings.access_token_expire_minutes
+            self.access_token_expire_minutes = getattr(
+                settings, "access_token_expire_minutes", access_token_expire_minutes
+            )
+            self.refresh_token_expire_days = getattr(
+                settings, "refresh_token_expire_days", refresh_token_expire_days
+            )
             self.bucket_name = bucket_name or settings.aws_bucket_name
         else:
             if not secret_key:
@@ -57,10 +68,14 @@ class S3AuthService:
             self.secret_key = secret_key
             self.algorithm = algorithm
             self.access_token_expire_minutes = access_token_expire_minutes
+            self.refresh_token_expire_days = refresh_token_expire_days
             self.bucket_name = bucket_name
 
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         self.user_service = S3DataService[S3User](S3User, self.bucket_name)
+        self.refresh_token_service = S3DataService[RefreshToken](
+            RefreshToken, self.bucket_name
+        )
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a plain password against a hash.
@@ -117,14 +132,29 @@ class S3AuthService:
 
         return True, "Password is valid"
 
+    def _hash_token(self, token: str) -> str:
+        """Hash a token for storage.
+
+        Args:
+            token: The token to hash
+
+        Returns:
+            SHA-256 hash of the token
+        """
+        return hashlib.sha256(token.encode()).hexdigest()
+
     def create_access_token(
-        self, data: dict, expires_delta: timedelta | None = None
+        self,
+        data: dict,
+        expires_delta: timedelta | None = None,
+        include_jti: bool = True,
     ) -> str:
         """Create a JWT access token.
 
         Args:
             data: The data to encode in the token
             expires_delta: Optional custom expiration time
+            include_jti: Whether to include a JWT ID for blacklisting
 
         Returns:
             The encoded JWT token
@@ -133,7 +163,17 @@ class S3AuthService:
         expire = datetime.now(timezone.utc) + (
             expires_delta or timedelta(minutes=self.access_token_expire_minutes)
         )
-        to_encode.update({"exp": expire})
+
+        to_encode.update({
+            "exp": expire,
+            "iat": datetime.now(timezone.utc),
+            "type": "access",
+        })
+
+        # Add JWT ID for blacklist support
+        if include_jti:
+            to_encode["jti"] = str(uuid.uuid4())
+
         return jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
 
     def decode_token(self, token: str) -> dict:
@@ -183,6 +223,20 @@ class S3AuthService:
         """
         users, _ = await self.user_service.list_by_prefix(s3_client, limit=1000)
         return next((u for u in users if u.email == email), None)
+
+    async def get_user_by_id(
+        self, s3_client: AioBaseClient, user_id: uuid.UUID
+    ) -> S3User | None:
+        """Get a user by ID.
+
+        Args:
+            s3_client: The S3 client to use
+            user_id: The user ID to look up
+
+        Returns:
+            The user if found, None otherwise
+        """
+        return await self.user_service.get(s3_client, user_id)
 
     async def authenticate_user(
         self, s3_client: AioBaseClient, username: str, password: str
@@ -250,3 +304,225 @@ class S3AuthService:
             "full_name": full_name,
         }
         return await self.user_service.create(s3_client, S3User(**user_data))
+
+    # ===== Refresh Token Methods =====
+
+    async def create_token_pair(
+        self,
+        s3_client: AioBaseClient,
+        user: S3User,
+        device_info: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> dict:
+        """Create both access and refresh tokens.
+
+        Args:
+            s3_client: The S3 client to use
+            user: The user to create tokens for
+            device_info: Optional device information
+            ip_address: Optional IP address
+            user_agent: Optional user agent string
+
+        Returns:
+            Dictionary with access_token, refresh_token, token_type, and expires_in
+        """
+        # Create access token (short-lived, stateless)
+        access_token = self.create_access_token(
+            data={"sub": user.username, "user_id": str(user.id)}
+        )
+
+        # Create refresh token (long-lived, stored in S3)
+        refresh_token = secrets.token_urlsafe(32)
+        refresh_token_hash = self._hash_token(refresh_token)
+
+        refresh_token_obj = RefreshToken(
+            user_id=user.id,
+            token_hash=refresh_token_hash,
+            expires_at=datetime.now(timezone.utc)
+            + timedelta(days=self.refresh_token_expire_days),
+            device_info=device_info,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await self.refresh_token_service.create(s3_client, refresh_token_obj)
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": self.access_token_expire_minutes * 60,
+        }
+
+    async def refresh_access_token(
+        self,
+        s3_client: AioBaseClient,
+        refresh_token: str,
+    ) -> dict:
+        """Validate refresh token and issue new token pair.
+
+        This method implements token rotation - the old refresh token
+        is revoked and a new one is issued with each refresh.
+
+        Args:
+            s3_client: The S3 client to use
+            refresh_token: The refresh token to validate
+
+        Returns:
+            Dictionary with new access_token, refresh_token, etc.
+
+        Raises:
+            S3AuthError: If refresh token is invalid or expired
+        """
+        token_hash = self._hash_token(refresh_token)
+
+        # Find the refresh token in S3
+        tokens, _ = await self.refresh_token_service.list_by_prefix(
+            s3_client, limit=1000
+        )
+
+        valid_token = None
+        for t in tokens:
+            if t.token_hash == token_hash and not t.revoked:
+                if t.expires_at > datetime.now(timezone.utc):
+                    valid_token = t
+                    break
+
+        if not valid_token:
+            raise S3AuthError("Invalid or expired refresh token")
+
+        # Get the user
+        user = await self.user_service.get(s3_client, valid_token.user_id)
+        if not user or not user.is_active:
+            raise S3AuthError("User not found or inactive")
+
+        # Revoke old refresh token (rotation)
+        valid_token.revoked = True
+        valid_token.revoked_at = datetime.now(timezone.utc)
+        await self.refresh_token_service.update(
+            s3_client, valid_token.id, valid_token
+        )
+
+        # Issue new token pair
+        return await self.create_token_pair(
+            s3_client,
+            user,
+            device_info=valid_token.device_info,
+            ip_address=valid_token.ip_address,
+            user_agent=valid_token.user_agent,
+        )
+
+    async def revoke_refresh_token(
+        self,
+        s3_client: AioBaseClient,
+        refresh_token: str,
+    ) -> bool:
+        """Revoke a specific refresh token (logout).
+
+        Args:
+            s3_client: The S3 client to use
+            refresh_token: The refresh token to revoke
+
+        Returns:
+            True if token was revoked, False if not found
+        """
+        token_hash = self._hash_token(refresh_token)
+        tokens, _ = await self.refresh_token_service.list_by_prefix(
+            s3_client, limit=1000
+        )
+
+        for t in tokens:
+            if t.token_hash == token_hash:
+                t.revoked = True
+                t.revoked_at = datetime.now(timezone.utc)
+                await self.refresh_token_service.update(s3_client, t.id, t)
+                return True
+        return False
+
+    async def revoke_all_user_tokens(
+        self,
+        s3_client: AioBaseClient,
+        user_id: uuid.UUID,
+    ) -> int:
+        """Revoke all refresh tokens for a user (logout all devices).
+
+        Args:
+            s3_client: The S3 client to use
+            user_id: The user ID to revoke tokens for
+
+        Returns:
+            Number of tokens revoked
+        """
+        tokens, _ = await self.refresh_token_service.list_by_prefix(
+            s3_client, limit=1000
+        )
+        count = 0
+
+        for t in tokens:
+            if t.user_id == user_id and not t.revoked:
+                t.revoked = True
+                t.revoked_at = datetime.now(timezone.utc)
+                await self.refresh_token_service.update(s3_client, t.id, t)
+                count += 1
+
+        return count
+
+    async def get_user_active_sessions(
+        self,
+        s3_client: AioBaseClient,
+        user_id: uuid.UUID,
+    ) -> list[dict]:
+        """Get all active sessions for a user.
+
+        Args:
+            s3_client: The S3 client to use
+            user_id: The user ID to get sessions for
+
+        Returns:
+            List of session information dictionaries
+        """
+        tokens, _ = await self.refresh_token_service.list_by_prefix(
+            s3_client, limit=1000
+        )
+        now = datetime.now(timezone.utc)
+
+        sessions = []
+        for t in tokens:
+            if t.user_id == user_id and not t.revoked and t.expires_at > now:
+                sessions.append({
+                    "id": str(t.id),
+                    "device_info": t.device_info,
+                    "ip_address": t.ip_address,
+                    "user_agent": t.user_agent,
+                    "created_at": t.created_at.isoformat(),
+                    "expires_at": t.expires_at.isoformat(),
+                })
+
+        return sessions
+
+    async def cleanup_expired_tokens(
+        self,
+        s3_client: AioBaseClient,
+    ) -> int:
+        """Clean up expired refresh tokens from S3.
+
+        This method should be called periodically to remove expired tokens.
+
+        Args:
+            s3_client: The S3 client to use
+
+        Returns:
+            Number of tokens deleted
+        """
+        tokens, _ = await self.refresh_token_service.list_by_prefix(
+            s3_client, limit=1000
+        )
+        now = datetime.now(timezone.utc)
+        count = 0
+
+        for t in tokens:
+            if t.expires_at < now or t.revoked:
+                await self.refresh_token_service.delete(s3_client, t.id)
+                count += 1
+
+        return count

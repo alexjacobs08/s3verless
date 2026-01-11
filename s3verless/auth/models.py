@@ -1,5 +1,7 @@
 """Authentication models for S3verless."""
 
+import uuid
+from datetime import datetime
 from typing import ClassVar
 
 from pydantic import EmailStr, Field
@@ -21,7 +23,7 @@ class S3User(BaseS3Model):
     and bypass password validation. Always use S3AuthService methods.
     """
 
-    s3_prefix: ClassVar[str] = "users"  # Default prefix for user objects
+    _plural_name: ClassVar[str] = "users"
     _enable_api: ClassVar[bool] = False  # No auto-generated CRUD endpoints
     _enable_admin: ClassVar[bool] = False  # Don't show in admin interface
 
@@ -41,3 +43,24 @@ class S3User(BaseS3Model):
             }
         }
     }
+
+
+class RefreshToken(BaseS3Model):
+    """Refresh token model stored in S3 for validation and revocation.
+
+    Refresh tokens are long-lived tokens that can be used to obtain
+    new access tokens. They are stored in S3 to enable revocation.
+    """
+
+    _plural_name: ClassVar[str] = "refresh_tokens"
+    _enable_api: ClassVar[bool] = False
+    _enable_admin: ClassVar[bool] = False
+
+    user_id: uuid.UUID
+    token_hash: str  # SHA-256 hash of the actual token
+    expires_at: datetime
+    revoked: bool = False
+    revoked_at: datetime | None = None
+    device_info: str | None = None  # Optional: track which device
+    ip_address: str | None = None  # Optional: track origin IP
+    user_agent: str | None = None  # Optional: browser/client info
