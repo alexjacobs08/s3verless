@@ -1,12 +1,26 @@
-# S3verless
+<p align="center">
+  <img src="https://raw.githubusercontent.com/alexjacobs08/s3verless/main/docs/assets/logo.svg" alt="S3verless bucket logo" width="96">
+</p>
 
-[![PyPI version](https://badge.fury.io/py/s3verless.svg)](https://badge.fury.io/py/s3verless)
-[![Python Versions](https://img.shields.io/pypi/pyversions/s3verless.svg)](https://pypi.org/project/s3verless/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<h1 align="center">S3verless</h1>
 
-A Python framework for building web applications using S3 as the database. Define Pydantic models, get automatic REST APIs and an admin interface.
+<p align="center">
+  <strong>Your database is a bucket now.</strong><br>
+  A Python framework for building web applications using S3 as the database. Define Pydantic models, get automatic REST APIs and an admin interface.
+</p>
 
-**[Documentation](https://s3verless.org)** | **[PyPI](https://pypi.org/project/s3verless/)** | **[GitHub](https://github.com/alexjacobs08/s3verless)**
+<p align="center">
+  <a href="https://badge.fury.io/py/s3verless"><img src="https://badge.fury.io/py/s3verless.svg" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/s3verless/"><img src="https://img.shields.io/pypi/pyversions/s3verless.svg" alt="Python Versions"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+</p>
+
+<p align="center">
+  <a href="https://s3verless.org"><strong>Website</strong></a> |
+  <a href="https://s3verless.org/guide/"><strong>Documentation</strong></a> |
+  <a href="https://pypi.org/project/s3verless/"><strong>PyPI</strong></a> |
+  <a href="https://github.com/alexjacobs08/s3verless"><strong>GitHub</strong></a>
+</p>
 
 ## Install
 
