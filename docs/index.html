@@ -449,9 +449,22 @@
             font-size: 0.82rem;
             line-height: 1.85;
             padding: 1.25rem 1.25rem 1.5rem;
-            min-height: 320px;
+            position: relative;
+        }
+
+        .term-sizer,
+        .term-live {
             white-space: pre-wrap;
             word-break: break-word;
+        }
+
+        .term-sizer { visibility: hidden; }
+
+        .term-live {
+            position: absolute;
+            top: 1.25rem;
+            left: 1.25rem;
+            right: 1.25rem;
         }
 
         .t-prompt { color: var(--accent); }
@@ -1185,7 +1198,10 @@
                         <span class="term-dot g"></span>
                         <span class="terminal-title">~/my-startup — zsh</span>
                     </div>
-                    <div class="terminal-body" id="terminalBody"><span class="cursor"></span></div>
+                    <div class="terminal-body">
+                        <div class="term-sizer" id="terminalSizer" aria-hidden="true"></div>
+                        <div class="term-live" id="terminalBody"><span class="cursor"></span></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1608,6 +1624,18 @@ products = <span class="c-kw">await</span> <span class="c-fn">query</span>(Produ
         const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
         const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+        // Reserve the terminal's final height so the animation never shifts layout
+        document.getElementById('terminalSizer').textContent =
+            termLines.map(l => (l.type === 'cmd' ? '$ ' : '') + l.text).join('\n');
+
+        // Only animate while the terminal is on screen
+        let termVisible = true;
+        if ('IntersectionObserver' in window) {
+            new IntersectionObserver(entries => {
+                termVisible = entries[0].isIntersecting;
+            }, { threshold: 0.05 }).observe(document.querySelector('.terminal'));
+        }
+
         function span(cls, text) {
             const s = document.createElement('span');
             if (cls) s.className = cls;
@@ -1617,6 +1645,7 @@ products = <span class="c-kw">await</span> <span class="c-fn">query</span>(Produ
 
         async function typeTerminal() {
             if (reduceMotion) {
+                termBody.innerHTML = '';
                 termLines.forEach(l => {
                     if (l.type === 'cmd') {
                         termBody.appendChild(span('t-prompt', '$ '));
@@ -1631,6 +1660,7 @@ products = <span class="c-kw">await</span> <span class="c-fn">query</span>(Produ
                 termBody.innerHTML = '';
                 const cursor = span('cursor', '');
                 for (const line of termLines) {
+                    while (!termVisible || document.hidden) await sleep(400);
                     if (line.type === 'cmd') {
                         termBody.appendChild(span('t-prompt', '$ '));
                         const cmdSpan = span('t-cmd', '');
