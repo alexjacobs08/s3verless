@@ -3,12 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>S3verless - Because Databases Are Overrated</title>
-    <meta name="description" content="Use S3 as your database. Yes, really. We're serious. (Kind of.)">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🪣%3C/text%3E%3C/svg%3E">
+    <title>S3verless — Your database is a bucket now</title>
+    <meta name="description" content="S3verless turns Pydantic models into full REST APIs backed by AWS S3. Auth, admin panel, migrations, relationships. Zero database servers. Yes, really.">
+    <meta property="og:title" content="S3verless — Your database is a bucket now">
+    <meta property="og:description" content="Define a Pydantic model. Get a full REST API. Backed by a bucket. $0.02/month.">
+    <meta property="og:type" content="website">
+    <meta name="theme-color" content="#141410">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffd60a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8h16l-1.4 11.1a2 2 0 0 1-2 1.9H7.4a2 2 0 0 1-2-1.9L4 8Z'/%3E%3Cpath d='M7.5 8a4.5 4.5 0 0 1 9 0'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <!-- Privacy-friendly analytics by Plausible -->
     <script async src="https://plausible.io/js/pa-egT0TLgS7zTQ-I5fzBGc-.js"></script>
     <script>
@@ -17,684 +21,188 @@
     </script>
     <style>
         :root {
-            --primary-green: #4ade80;
-            --light-green: #86efac;
-            --dark-green: #22c55e;
-            --bg-white: #ffffff;
-            --bg-light: #f0fdf4;
-            --gentle-blue: #60a5fa;
-            --soft-blue: #93c5fd;
-            --text-dark: #1e293b;
-            --text-gray: #64748b;
-            --border: #e2e8f0;
-            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
-            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
-            --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.12);
-            --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.16);
+            --bg: #0b0b09;
+            --bg-2: #111110;
+            --surface: #171712;
+            --surface-2: #1d1d16;
+            --border: #28281f;
+            --border-bright: #3b3b2c;
+            --text: #f0efe8;
+            --muted: #a3a298;
+            --faint: #6f6e62;
+            --accent: #ffd60a;
+            --accent-bright: #ffe45c;
+            --accent-dim: rgba(255, 214, 10, 0.1);
+            --green: #4ade80;
+            --green-bright: #86efac;
+            --green-dim: rgba(74, 222, 128, 0.1);
+            --amber: #ffe45c;
+            --red: #f87171;
+            --blue: #60a5fa;
+            --pink: #f472b6;
+            --purple: #c084fc;
+            --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+            --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --display: 'Space Grotesk', 'Inter', -apple-system, sans-serif;
+            --radius: 12px;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        html {
-            scroll-behavior: smooth;
-        }
+        html { scroll-behavior: smooth; }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--bg-white);
-            color: var(--text-dark);
-            line-height: 1.7;
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            padding-top: 64px;
         }
 
-        .hero {
-            min-height: 85vh;
-            background: linear-gradient(180deg, #f8fffe 0%, #f0f9ff 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-            padding: 6rem 0 4rem;
-        }
+        ::selection { background: var(--accent); color: #141410; }
 
         .container {
-            max-width: 1200px;
+            max-width: 1160px;
             margin: 0 auto;
-            padding: 0 2rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .hero-content {
-            text-align: center;
-            animation: fadeInUp 1s ease-out;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(40px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .logo {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-        }
-
-        h1 {
-            font-size: 4rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--dark-green) 0%, var(--gentle-blue) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 1rem;
-            line-height: 1.1;
-            letter-spacing: -0.03em;
-        }
-
-        .tagline {
-            font-size: 1.5rem;
-            color: var(--text-gray);
-            margin-bottom: 2.5rem;
-            font-weight: 400;
-            letter-spacing: -0.01em;
-        }
-
-        .disclaimer {
-            font-size: 1rem;
-            color: var(--text-gray);
-            font-style: italic;
-            margin-bottom: 2.5rem;
-            opacity: 0.7;
-            font-weight: 400;
-        }
-
-        .cta-buttons {
-            display: flex;
-            gap: 1.25rem;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 3rem;
-        }
-
-        .btn {
-            padding: 0.875rem 2rem;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 10px;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            display: inline-block;
-            border: none;
-            cursor: pointer;
-            letter-spacing: -0.01em;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(34, 197, 94, 0.35);
-        }
-
-        .btn-secondary {
-            background: white;
-            color: var(--text-dark);
-            border: 1px solid #e5e7eb;
-        }
-
-        .btn-secondary:hover {
-            border-color: #d1d5db;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-
-        .install-code {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            color: var(--primary-green);
-            padding: 1.25rem 2.5rem;
-            border-radius: 12px;
-            font-family: 'JetBrains Mono', 'Courier New', monospace;
-            font-size: 1.125rem;
-            display: inline-block;
-            margin: 2rem 0 1.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            border: 1px solid rgba(74, 222, 128, 0.15);
-        }
-
-        .section {
-            padding: 5rem 0;
-        }
-
-        .section-alt {
-            background: linear-gradient(180deg, var(--bg-light) 0%, rgba(240, 253, 244, 0.5) 100%);
+            padding: 0 1.5rem;
             position: relative;
         }
 
-        .section-title {
-            font-size: 3rem;
-            font-weight: 700;
-            text-align: center;
-            margin-bottom: 3rem;
-            color: var(--text-dark);
-            letter-spacing: -0.02em;
-            line-height: 1.2;
+        .mono { font-family: var(--mono); }
+
+        h1, .section-title, .final-cta h2, .step h3, .feature-title,
+        .navbar-brand, .footer-brand, .comparison-box h3 {
+            font-family: var(--display);
         }
 
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 1.5rem;
-            margin-top: 3rem;
-        }
-
-        .feature-card {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .feature-card:hover {
-            border-color: #d1d5db;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-
-        .feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            display: block;
-        }
-
-        .feature-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-            color: var(--text-dark);
-            letter-spacing: -0.01em;
-        }
-
-        .feature-description {
-            color: var(--text-gray);
-            line-height: 1.6;
-            font-size: 0.9375rem;
-        }
-
-        .absurdity-section {
-            background: #f9fafb;
-            padding: 5rem 0;
-            text-align: center;
-        }
-
-        .absurdity-title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 2.5rem;
-            color: var(--text-dark);
-            letter-spacing: -0.02em;
-        }
-
-        .comparison {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2.5rem;
-            max-width: 1000px;
-            margin: 0 auto;
-            text-align: left;
-            position: relative;
-            z-index: 1;
-        }
-
-        .comparison-box {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-            transition: all 0.2s ease;
-        }
-
-        .comparison-box:hover {
-            border-color: #d1d5db;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-
-        .comparison-box h3 {
-            font-size: 1.25rem;
-            margin-bottom: 1.25rem;
-            font-weight: 600;
-            letter-spacing: -0.01em;
-        }
-
-        .boring {
-            border-left: 3px solid #dc2626;
-        }
-
-        .boring h3 {
-            color: #dc2626;
-        }
-
-        .exciting {
-            border-left: 3px solid var(--dark-green);
-        }
-
-        .exciting h3 {
-            color: var(--dark-green);
-        }
-
-        .comparison-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .comparison-list li {
-            padding: 0.5rem 0;
-            padding-left: 2rem;
-            position: relative;
-            font-size: 0.9375rem;
-        }
-
-        .comparison-list li::before {
+        /* ============ Background texture ============ */
+        .noise::before {
+            content: "";
             position: absolute;
-            left: 0;
-            font-size: 1.25rem;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+            pointer-events: none;
         }
 
-        .boring .comparison-list li::before {
-            content: '❌';
-        }
-
-        .exciting .comparison-list li::before {
-            content: '✅';
-        }
-
-        .code-wrapper {
-            margin: 2rem auto;
-            max-width: 900px;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: var(--shadow-xl);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        .code-header {
-            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-            padding: 1rem 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            border-bottom: 1px solid rgba(74, 222, 128, 0.1);
-        }
-
-        .code-dots {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
-
-        .code-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            opacity: 0.8;
-        }
-
-        .code-dot.red {
-            background: #ff5f56;
-        }
-
-        .code-dot.yellow {
-            background: #ffbd2e;
-        }
-
-        .code-dot.green {
-            background: #27c93f;
-        }
-
-        .code-filename {
-            color: #cbd5e0;
-            font-family: 'JetBrains Mono', 'Courier New', monospace;
-            font-size: 0.875rem;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-        }
-
-        .code-example {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            color: var(--light-green);
-            padding: 2.5rem;
-            margin: 0;
-            overflow-x: auto;
-            font-family: 'JetBrains Mono', 'Courier New', monospace;
-            font-size: 1rem;
-            line-height: 1.8;
-            position: relative;
-            white-space: pre;
-        }
-
-        .code-example::before {
-            display: none;
-        }
-
-        .code-comment {
-            color: var(--soft-blue);
-            font-style: italic;
-        }
-
-        .testimonial {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            margin: 1.5rem 0;
-            border: 1px solid #e5e7eb;
-            border-left: 3px solid var(--primary-green);
-            transition: all 0.2s ease;
-        }
-
-        .testimonial:hover {
-            border-color: #d1d5db;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-
-        .testimonial-text {
-            font-size: 1rem;
-            font-style: italic;
-            color: var(--text-gray);
-            margin-bottom: 1rem;
-            line-height: 1.6;
-            font-weight: 400;
-        }
-
-        .testimonial-author {
-            font-weight: 600;
-            color: var(--text-dark);
-            font-size: 0.9375rem;
-        }
-
-        .testimonial-role {
-            color: var(--text-gray);
-            font-size: 0.875rem;
-            margin-top: 0.25rem;
-        }
-
-        footer {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            color: white;
-            padding: 3rem 0 2rem;
-            text-align: center;
-            border-top: 1px solid rgba(74, 222, 128, 0.1);
-        }
-
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-top: 1.5rem;
-            flex-wrap: wrap;
-        }
-
-        .footer-links a {
-            color: rgba(255, 255, 255, 0.7);
-            text-decoration: none;
-            transition: color 0.2s ease;
-            font-weight: 500;
-            font-size: 0.9375rem;
-        }
-
-        .footer-links a:hover {
-            color: var(--light-green);
-        }
-
-        .warning-box {
-            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-            border: 2px solid #fca5a5;
-            border-radius: 20px;
-            padding: 2.5rem;
-            margin: 3rem auto;
-            max-width: 850px;
-            box-shadow: var(--shadow-md);
-        }
-
-        .warning-box h3 {
-            color: #dc2626;
-            margin-bottom: 1.5rem;
-            font-size: 1.75rem;
-            font-weight: 800;
-            letter-spacing: -0.01em;
-        }
-
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 3rem;
-            }
-
-            .logo {
-                font-size: 3.5rem;
-            }
-
-            .tagline {
-                font-size: 1.3rem;
-            }
-
-            .section-title {
-                font-size: 2.5rem;
-            }
-
-            .comparison {
-                grid-template-columns: 1fr;
-            }
-
-            .cta-buttons {
-                flex-direction: column;
-            }
-
-            .section {
-                padding: 4rem 0;
-            }
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 0.375rem 0.875rem;
-            background: white;
-            color: var(--text-dark);
-            border-radius: 6px;
-            font-size: 0.8125rem;
-            font-weight: 600;
-            margin: 0 0.375rem;
-            border: 1px solid #e5e7eb;
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin: 3rem 0;
-        }
-
-        .stat {
-            text-align: center;
-            padding: 2rem 1.5rem;
-            border-radius: 12px;
-            background: white;
-            border: 1px solid #e5e7eb;
-            transition: all 0.2s ease;
-        }
-
-        .stat:hover {
-            border-color: #d1d5db;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--dark-green) 0%, var(--gentle-blue) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: -0.02em;
-        }
-
-        .stat-label {
-            color: var(--text-gray);
-            font-size: 0.875rem;
-            margin-top: 0.5rem;
-            font-weight: 500;
-        }
-
-        /* Navigation Bar */
+        /* ============ Nav ============ */
         .navbar {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            border-bottom: 1px solid rgba(74, 222, 128, 0.1);
-            padding: 0.75rem 0;
-            z-index: 1000;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+            top: 0; left: 0; right: 0;
+            height: 64px;
+            z-index: 100;
+            background: rgba(11, 11, 9, 0.82);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.3s ease;
         }
 
-        .navbar.scrolled {
-            padding: 0.5rem 0;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        }
+        .navbar.scrolled { border-bottom-color: var(--border); }
 
         .navbar .container {
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 1rem;
         }
 
         .navbar-brand {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.6rem;
             text-decoration: none;
+            color: var(--text);
             font-weight: 800;
-            font-size: 1.25rem;
-            color: white;
-            transition: transform 0.3s ease;
+            font-size: 1.1rem;
+            letter-spacing: -0.02em;
         }
 
-        .navbar-brand:hover {
-            transform: scale(1.05);
+        .navbar-brand .bucket-svg {
+            width: 22px;
+            height: 22px;
+            color: var(--accent);
+            flex-shrink: 0;
         }
 
-        .navbar-logo {
-            font-size: 1.75rem;
-            filter: drop-shadow(0 2px 4px rgba(74, 222, 128, 0.3));
-        }
-
-        .navbar-text {
-            background: linear-gradient(135deg, var(--light-green) 0%, var(--gentle-blue) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .navbar-brand .version-tag {
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--accent);
+            background: var(--accent-dim);
+            border: 1px solid rgba(255, 214, 10, 0.25);
+            padding: 0.15rem 0.45rem;
+            border-radius: 99px;
         }
 
         .navbar-menu {
             display: flex;
-            align-items: center;
-            gap: 2rem;
+            gap: 1.75rem;
             list-style: none;
-            margin: 0;
-            padding: 0;
         }
 
         .navbar-menu a {
-            color: rgba(255, 255, 255, 0.9);
+            color: var(--muted);
             text-decoration: none;
+            font-size: 0.875rem;
             font-weight: 500;
-            font-size: 0.9375rem;
-            transition: all 0.3s ease;
-            position: relative;
-            padding: 0.5rem 0;
+            transition: color 0.2s ease;
         }
 
-        .navbar-menu a::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary-green), var(--gentle-blue));
-            transition: width 0.3s ease;
-        }
+        .navbar-menu a:hover { color: var(--text); }
 
-        .navbar-menu a:hover {
-            color: var(--light-green);
-        }
-
-        .navbar-menu a:hover::after {
-            width: 100%;
-        }
-
-        .navbar-cta {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
+        .navbar-cta { display: flex; gap: 0.6rem; align-items: center; }
 
         .navbar-btn {
-            padding: 0.5rem 1.25rem;
-            font-size: 0.875rem;
-            font-weight: 600;
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
             border-radius: 8px;
             text-decoration: none;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.4rem;
+            white-space: nowrap;
         }
+
+        .navbar-btn-ghost {
+            color: var(--muted);
+            border: 1px solid var(--border);
+        }
+
+        .region-chip {
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            color: var(--faint);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.4rem 0.65rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .region-chip:hover { color: var(--accent); border-color: rgba(255, 214, 10, 0.4); }
+
+        .navbar-btn-ghost:hover { color: var(--text); border-color: var(--border-bright); background: var(--surface); }
 
         .navbar-btn-primary {
-            background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
-            color: white;
-            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+            color: #141410;
+            background: var(--accent);
+            font-weight: 700;
         }
 
-        .navbar-btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
-        }
-
-        .navbar-btn-secondary {
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 0.9);
-            background: transparent;
-        }
-
-        .navbar-btn-secondary:hover {
-            border-color: var(--primary-green);
-            background: rgba(74, 222, 128, 0.1);
-            color: white;
-        }
+        .navbar-btn-primary:hover { background: var(--accent-bright); }
 
         .mobile-menu-toggle {
             display: none;
             flex-direction: column;
-            gap: 0.375rem;
+            gap: 5px;
             background: none;
             border: none;
             cursor: pointer;
@@ -702,357 +210,1317 @@
         }
 
         .mobile-menu-toggle span {
-            width: 24px;
-            height: 2px;
-            background: white;
-            transition: all 0.3s ease;
+            width: 22px; height: 2px;
+            background: var(--text);
             border-radius: 2px;
+            transition: all 0.3s ease;
         }
 
-        @media (max-width: 768px) {
-            .navbar-menu {
-                display: none;
-            }
-
-            .navbar-cta {
-                gap: 0.5rem;
-            }
-
-            .navbar-btn {
-                padding: 0.5rem 1rem;
-                font-size: 0.875rem;
-            }
-
-            .navbar-btn-secondary {
-                display: none;
-            }
-
-            .mobile-menu-toggle {
-                display: flex;
-            }
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 64px; left: 0; right: 0;
+            background: var(--bg-2);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem 1.5rem;
+            z-index: 99;
         }
 
-        /* Add padding to body to account for fixed navbar */
-        body {
-            padding-top: 64px;
+        .mobile-menu.open { display: block; }
+
+        .mobile-menu a {
+            display: block;
+            padding: 0.75rem 0;
+            color: var(--muted);
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mobile-menu a:last-child { border-bottom: none; }
+
+        @media (max-width: 820px) {
+            .navbar-menu, .navbar-btn-ghost, .region-chip { display: none; }
+            .mobile-menu-toggle { display: flex; }
+        }
+
+        /* ============ Hero ============ */
+        .hero {
+            position: relative;
+            padding: 5rem 0 4rem;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: "";
+            position: absolute;
+            top: -300px; left: 50%;
+            transform: translateX(-50%);
+            width: 900px; height: 600px;
+            background: radial-gradient(ellipse at center, rgba(255, 214, 10, 0.08) 0%, transparent 65%);
+            pointer-events: none;
+        }
+
+        .hero::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 214, 10, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 214, 10, 0.035) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: radial-gradient(ellipse 75% 65% at 50% 35%, black, transparent 72%);
+            -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 35%, black, transparent 72%);
+            pointer-events: none;
+        }
+
+        .hero-grid { text-align: center; }
+
+        .hero-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: var(--accent-dim);
+            border: 1px solid rgba(255, 214, 10, 0.25);
+            padding: 0.35rem 0.8rem;
+            border-radius: 99px;
+            margin-bottom: 1.5rem;
+            max-width: 100%;
+            line-height: 1.4;
+        }
+
+        .hero-eyebrow .eyebrow-text { min-width: 0; }
+
+        .hero-eyebrow .pulse {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 214, 10, 0.5); }
+            50% { opacity: 0.6; box-shadow: 0 0 0 5px rgba(255, 214, 10, 0); }
+        }
+
+        h1 {
+            font-size: clamp(2.6rem, 5.5vw, 4.2rem);
+            font-weight: 900;
+            line-height: 1.05;
+            letter-spacing: -0.04em;
+            margin-bottom: 1.25rem;
+        }
+
+        h1 .grad {
+            background: linear-gradient(120deg, #ffd60a 10%, #fff3a3 90%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-sub {
+            font-size: 1.15rem;
+            color: var(--muted);
+            max-width: 36rem;
+            margin: 0 auto 2rem;
+            line-height: 1.7;
+        }
+
+        .hero-sub strong { color: var(--text); font-weight: 600; }
+
+        .hero-actions {
+            display: flex;
+            gap: 0.85rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 0.8rem 1.6rem;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #141410;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-bright);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255, 214, 10, 0.3);
+        }
+
+        .btn-secondary {
+            border-color: var(--border);
+            color: var(--text);
+            background: var(--surface);
+        }
+
+        .btn-secondary:hover { border-color: var(--border-bright); background: var(--surface-2); transform: translateY(-2px); }
+
+        .install-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.9rem;
+            font-family: var(--mono);
+            font-size: 0.875rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.7rem 0.5rem 0.7rem 1.1rem;
+            color: var(--muted);
+        }
+
+        .install-pill .prompt { color: var(--accent); }
+        .install-pill code { color: var(--text); }
+
+        .copy-btn {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            font-weight: 500;
+            background: var(--surface-2);
+            color: var(--muted);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.35rem 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover { color: var(--accent); border-color: rgba(255, 214, 10, 0.4); }
+        .copy-btn.copied { color: var(--accent); border-color: rgba(255, 214, 10, 0.4); }
+
+        /* Terminal */
+        .terminal {
+            background: #0d0d0b;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 214, 10, 0.05);
+            max-width: 700px;
+            margin: 3rem auto 0;
+            text-align: left;
+        }
+
+        .terminal-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .term-dot { width: 11px; height: 11px; border-radius: 50%; }
+        .term-dot.r { background: #ff5f57; }
+        .term-dot.y { background: #febc2e; }
+        .term-dot.g { background: #28c840; }
+
+        .terminal-title {
+            margin-left: auto;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--faint);
+        }
+
+        .terminal-body {
+            font-family: var(--mono);
+            font-size: 0.82rem;
+            line-height: 1.85;
+            padding: 1.25rem 1.25rem 1.5rem;
+            min-height: 320px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .t-prompt { color: var(--accent); }
+        .t-cmd { color: var(--text); }
+        .t-out { color: var(--faint); }
+        .t-ok { color: #4ade80; }
+        .t-key { color: #e8e6da; }
+        .t-comment { color: var(--muted); font-style: italic; }
+
+        .cursor {
+            display: inline-block;
+            width: 8px; height: 1.05em;
+            background: var(--accent);
+            vertical-align: text-bottom;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        @media (max-width: 960px) {
+            .terminal { margin-top: 2.5rem; }
+        }
+
+        /* ============ Marquee ============ */
+        .marquee {
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-2);
+            overflow: hidden;
+            padding: 0.9rem 0;
+            position: relative;
+        }
+
+        .marquee-track {
+            display: flex;
+            gap: 3rem;
+            width: max-content;
+            animation: marquee 30s linear infinite;
+        }
+
+        .marquee:hover .marquee-track { animation-play-state: paused; }
+
+        .marquee-item {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 3rem;
+            white-space: nowrap;
+        }
+
+        .marquee-item b { color: var(--accent); font-weight: 500; }
+
+        @keyframes marquee {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+
+        /* ============ Sections ============ */
+        .section { padding: 6rem 0; position: relative; }
+        .section-alt { background: var(--bg-2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+        .kicker {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--accent);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .section-title {
+            font-size: clamp(1.9rem, 3.5vw, 2.7rem);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            margin-bottom: 1rem;
+        }
+
+        .section-sub {
+            color: var(--muted);
+            font-size: 1.05rem;
+            max-width: 38rem;
+            margin-bottom: 3rem;
+        }
+
+        .center { text-align: center; }
+        .center .section-sub { margin-left: auto; margin-right: auto; }
+
+        /* ============ Steps ============ */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+
+        .step {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.75rem;
+            position: relative;
+            transition: all 0.25s ease;
+        }
+
+        .step:hover { border-color: var(--border-bright); transform: translateY(-4px); }
+
+        .step-num {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--faint);
+            margin-bottom: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .step-num::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+        .step h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin-bottom: 0.6rem;
+        }
+
+        .step p { color: var(--muted); font-size: 0.92rem; }
+
+        .step code {
+            font-family: var(--mono);
+            font-size: 0.8em;
+            color: var(--accent);
+            background: var(--accent-dim);
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 820px) { .steps { grid-template-columns: 1fr; } }
+
+        /* ============ Features ============ */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.75rem;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .feature-card:hover { border-color: var(--border-bright); transform: translateY(-4px); }
+        .feature-card:hover::after { opacity: 1; }
+
+        .feature-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.1rem;
+        }
+
+        .feature-icon {
+            display: inline-flex;
+            color: var(--accent);
+        }
+
+        .feature-icon svg { width: 26px; height: 26px; }
+
+        .feature-tag {
+            font-family: var(--mono);
+            font-size: 0.62rem;
+            font-weight: 500;
+            color: var(--accent);
+            background: var(--accent-dim);
+            border: 1px solid rgba(255, 214, 10, 0.25);
+            padding: 0.12rem 0.45rem;
+            border-radius: 99px;
+        }
+
+        .feature-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-description { color: var(--muted); font-size: 0.9rem; }
+        .feature-description small { color: var(--faint); }
+
+        @media (max-width: 960px) { .features { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px) { .features { grid-template-columns: 1fr; } }
+
+        /* ============ Code tabs ============ */
+        .code-tabs {
+            background: #0d0d0b;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+        }
+
+        .tabs-bar {
+            display: flex;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            color: var(--faint);
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 0.85rem 1.25rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover { color: var(--muted); }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background: rgba(255, 214, 10, 0.04);
+        }
+
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        .code-block {
+            font-family: var(--mono);
+            font-size: 0.83rem;
+            line-height: 1.8;
+            padding: 1.5rem;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .c-kw { color: #ffd60a; }
+        .c-str { color: #e6c384; }
+        .c-type { color: #d8d8d0; }
+        .c-cls { color: #ffe45c; }
+        .c-num { color: #e8e6da; }
+        .c-cmt { color: var(--faint); font-style: italic; }
+        .c-fn { color: #f0efe8; }
+        .c-method { color: #f0efe8; font-weight: 700; }
+        .c-path { color: var(--text); }
+
+        /* ============ Calculator ============ */
+        .calc {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2.5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+        }
+
+        .calc-controls label {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .calc-controls label output { color: var(--accent); font-weight: 500; }
+
+        .calc-slider-group { margin-bottom: 1.75rem; }
+
+        input[type="range"] {
+            width: 100%;
+            appearance: none;
+            -webkit-appearance: none;
+            height: 4px;
+            background: var(--border);
+            border-radius: 99px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 3px solid #141410;
+            box-shadow: 0 0 0 1px var(--accent), 0 0 14px rgba(255, 214, 10, 0.5);
+            transition: transform 0.15s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 3px solid #141410;
+            box-shadow: 0 0 0 1px var(--accent);
+        }
+
+        .calc-result {
+            background: #0d0d0b;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .calc-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 0.6rem 0;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        .calc-row .val { font-family: var(--mono); color: var(--text); }
+
+        .calc-big {
+            margin: 1rem 0 0.25rem;
+            font-family: var(--mono);
+        }
+
+        .calc-big .amount {
+            font-size: clamp(2.2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--accent);
+            text-shadow: 0 0 40px rgba(255, 214, 10, 0.4);
+        }
+
+        .calc-big .per { color: var(--faint); font-size: 0.9rem; }
+
+        .calc-vs {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            color: var(--faint);
+            margin-bottom: 1.25rem;
+        }
+
+        .calc-vs s { color: var(--red); }
+
+        .calc-savings {
+            font-size: 0.95rem;
+            color: var(--muted);
+            border-top: 1px solid var(--border);
+            padding-top: 1.25rem;
+        }
+
+        .calc-savings b { color: var(--amber); font-weight: 600; }
+
+        .calc-note {
+            margin-top: 1.5rem;
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            color: var(--faint);
+            line-height: 1.7;
+        }
+
+        @media (max-width: 900px) { .calc { grid-template-columns: 1fr; padding: 1.5rem; } }
+
+        /* ============ Comparison ============ */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .comparison-box {
+            border-radius: var(--radius);
+            padding: 2rem;
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .comparison-box h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .comparison-box h3 svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+        .comparison-box.boring { border-color: rgba(248, 113, 113, 0.2); }
+        .comparison-box.boring h3 { color: var(--red); }
+
+        .comparison-box.exciting {
+            border-color: rgba(255, 214, 10, 0.25);
+            background: linear-gradient(160deg, rgba(255, 214, 10, 0.05), var(--surface) 55%);
+        }
+        .comparison-box.exciting h3 { color: var(--accent); }
+
+        .comparison-list { list-style: none; }
+
+        .comparison-list li {
+            padding: 0.45rem 0 0.45rem 1.6rem;
+            position: relative;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .comparison-box.boring .comparison-list li::before {
+            content: "✕";
+            position: absolute; left: 0;
+            color: var(--red);
+            font-size: 0.8rem;
+        }
+
+        .comparison-box.exciting .comparison-list li::before {
+            content: "✓";
+            position: absolute; left: 0;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        @media (max-width: 720px) { .comparison { grid-template-columns: 1fr; } }
+
+        /* ============ Honesty ============ */
+        .honest-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+
+        .honest-card {
+            border: 1px dashed var(--border-bright);
+            border-radius: var(--radius);
+            padding: 1.75rem;
+            background: transparent;
+        }
+
+        .honest-card h3 {
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--amber);
+            margin-bottom: 0.75rem;
+        }
+
+        .honest-card p { color: var(--muted); font-size: 0.9rem; }
+        .honest-card p b { color: var(--text); font-weight: 600; }
+
+        @media (max-width: 900px) { .honest-grid { grid-template-columns: 1fr; } }
+
+        /* ============ Testimonials ============ */
+        .testimonials {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+
+        .testimonial {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.75rem;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.25s ease;
+        }
+
+        .testimonial:hover { border-color: var(--border-bright); transform: translateY(-4px); }
+
+        .testimonial-text {
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: var(--text);
+            margin-bottom: 1.5rem;
+            flex: 1;
+        }
+
+        .testimonial-text::before { content: "“"; color: var(--accent); font-size: 1.4em; line-height: 0; margin-right: 0.1em; }
+
+        .testimonial-author { font-weight: 700; font-size: 0.88rem; }
+        .testimonial-role { color: var(--faint); font-size: 0.78rem; font-family: var(--mono); }
+
+        @media (max-width: 900px) { .testimonials { grid-template-columns: 1fr; } }
+
+        .fine-print {
+            text-align: center;
+            margin-top: 2rem;
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            color: var(--faint);
+        }
+
+        /* ============ Final CTA ============ */
+        .final-cta { text-align: center; position: relative; overflow: hidden; }
+
+        .final-cta::before {
+            content: "";
+            position: absolute;
+            bottom: -250px; left: 50%;
+            transform: translateX(-50%);
+            width: 800px; height: 500px;
+            background: radial-gradient(ellipse at center, rgba(255, 214, 10, 0.08) 0%, transparent 65%);
+            pointer-events: none;
+        }
+
+        .final-cta h2 {
+            font-size: clamp(2rem, 4.5vw, 3.2rem);
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            margin-bottom: 1rem;
+        }
+
+        .final-cta .section-sub { margin-left: auto; margin-right: auto; margin-bottom: 2.5rem; }
+
+        .final-install {
+            display: inline-flex;
+            margin-bottom: 2.5rem;
+        }
+
+        /* ============ Footer ============ */
+        footer {
+            border-top: 1px solid var(--border);
+            background: var(--bg-2);
+            padding: 3.5rem 0 2.5rem;
+        }
+
+        .footer-grid {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-bottom: 2.5rem;
+        }
+
+        .ascii-bucket {
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            line-height: 1.15;
+            color: var(--faint);
+            margin-bottom: 0.9rem;
+            transition: color 0.3s ease;
+            cursor: default;
+        }
+
+        .ascii-bucket:hover { color: var(--accent); }
+
+        .footer-brand {
+            font-weight: 800;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .footer-brand .bucket-svg { width: 18px; height: 18px; color: var(--accent); }
+        .footer-tagline {
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            color: var(--faint);
+            margin-top: 0.4rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.2s ease;
+        }
+
+        .footer-links a:hover { color: var(--accent); }
+
+        .footer-bottom {
+            border-top: 1px solid var(--border);
+            padding-top: 1.75rem;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--faint);
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        /* ============ Toast ============ */
+        .toast {
+            position: fixed;
+            bottom: 1.5rem; left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--surface-2);
+            border: 1px solid rgba(255, 214, 10, 0.4);
+            color: var(--accent);
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            padding: 0.6rem 1.1rem;
+            border-radius: 8px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            z-index: 200;
+            white-space: nowrap;
+        }
+
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* ============ Reveal animation ============ */
+        .reveal {
+            opacity: 0;
+            transform: translateY(28px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            .reveal { opacity: 1; transform: none; }
+            html { scroll-behavior: auto; }
         }
     </style>
 </head>
 <body>
-    <!-- Navigation Bar -->
+    <!-- Nav -->
     <nav class="navbar" id="navbar">
         <div class="container">
             <a href="#" class="navbar-brand">
-                <span class="navbar-logo">🪣</span>
-                <span class="navbar-text">S3verless</span>
+                <svg class="bucket-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16l-1.4 11.1a2 2 0 0 1-2 1.9H7.4a2 2 0 0 1-2-1.9L4 8Z"/><path d="M7.5 8a4.5 4.5 0 0 1 9 0"/></svg>
+                <span>S3verless</span>
+                <span class="version-tag">v0.2.0</span>
             </a>
-            
+
             <ul class="navbar-menu">
                 <li><a href="#features">Features</a></li>
-                <li><a href="#how-it-works">How It Works</a></li>
-                <li><a href="#testimonials">Testimonials</a></li>
-                <li><a href="/guide/">Documentation</a></li>
+                <li><a href="#how-it-works">Code</a></li>
+                <li><a href="#calculator">Calculator</a></li>
+                <li><a href="#honest">Fine Print</a></li>
+                <li><a href="/guide/">Docs</a></li>
             </ul>
 
             <div class="navbar-cta">
-                <a href="https://github.com/alexjacobs08/s3verless" class="navbar-btn navbar-btn-secondary">
-                    View on GitHub
-                </a>
-                <a href="https://pypi.org/project/s3verless/" class="navbar-btn navbar-btn-primary">
-                    Get Started
-                </a>
+                <button class="region-chip" id="regionChip" title="Switch AWS region">us-east-1 ▾</button>
+                <a href="https://github.com/alexjacobs08/s3verless" class="navbar-btn navbar-btn-ghost">★ GitHub</a>
+                <a href="/guide/" class="navbar-btn navbar-btn-primary">Get Started</a>
             </div>
 
-            <button class="mobile-menu-toggle" aria-label="Toggle menu">
-                <span></span>
-                <span></span>
-                <span></span>
+            <button class="mobile-menu-toggle" id="mobileToggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
             </button>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section class="hero">
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">Code</a>
+        <a href="#calculator">Calculator</a>
+        <a href="#honest">Fine Print</a>
+        <a href="/guide/">Documentation</a>
+        <a href="https://github.com/alexjacobs08/s3verless">GitHub</a>
+    </div>
+
+    <!-- Hero -->
+    <section class="hero noise">
         <div class="container">
-            <div class="hero-content">
-                <div class="logo">🪣</div>
-                <h1>S3verless</h1>
-                <p class="tagline">Who needs a database when you have a bucket?</p>
-                <div class="cta-buttons">
-                    <a href="https://github.com/alexjacobs08/s3verless" class="btn btn-primary">
-                        ⭐ Star on GitHub
-                    </a>
-                    <a href="https://pypi.org/project/s3verless/" class="btn btn-secondary">
-                        📦 View on PyPI
-                    </a>
-                </div>
-
-                <div class="install-code">
-                    $ pip install s3verless
-                </div>
-
+            <div class="hero-grid">
                 <div>
-                    <span class="badge">v0.1.0 Alpha</span>
-                    <span class="badge">MIT License</span>
+                    <span class="hero-eyebrow">
+                        <span class="pulse"></span>
+                        <span class="eyebrow-text">v0.2.0 — now with migrations, relationships &amp; caching</span>
+                    </span>
+                    <h1>Your database is<br>a <span class="grad">bucket</span> now.</h1>
+                    <p class="hero-sub">
+                        Define a Pydantic model. Get a production-shaped REST API —
+                        <strong>auth, admin panel, pagination, migrations</strong> — backed by
+                        the cheapest, most durable storage on Earth.
+                        Yes, we're serious. <em>(Kind of.)</em>
+                    </p>
+                    <div class="hero-actions">
+                        <a href="/guide/" class="btn btn-primary">Get Started →</a>
+                        <a href="https://github.com/alexjacobs08/s3verless" class="btn btn-secondary">★ Star on GitHub</a>
+                    </div>
+                    <div class="install-pill">
+                        <span class="prompt">$</span>
+                        <code>pip install s3verless</code>
+                        <button class="copy-btn" data-copy="pip install s3verless">copy</button>
+                    </div>
+                </div>
+
+                <div class="terminal" aria-hidden="true">
+                    <div class="terminal-bar">
+                        <span class="term-dot r"></span>
+                        <span class="term-dot y"></span>
+                        <span class="term-dot g"></span>
+                        <span class="terminal-title">~/my-startup — zsh</span>
+                    </div>
+                    <div class="terminal-body" id="terminalBody"><span class="cursor"></span></div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- What Is Section -->
-    <section class="section" style="padding: 4rem 0;">
-        <div class="container" style="max-width: 800px;">
-            <h2 class="section-title" style="font-size: 2.5rem; margin-bottom: 2rem;">What is S3verless?</h2>
-            <div style="background: white; padding: 2rem; border-radius: 12px; border: 1px solid #e5e7eb;">
-                <p style="font-size: 1.125rem; line-height: 1.8; color: var(--text-dark); margin-bottom: 1.5rem;">
-                    <strong>S3verless</strong> is a Python framework that treats AWS S3 as a database. Instead of managing database servers, connection pools, and complex infrastructure, you simply store your data as JSON objects in S3 buckets.
-                </p>
-                <p style="font-size: 1.125rem; line-height: 1.8; color: var(--text-dark); margin-bottom: 1.5rem;">
-                    Define your data models with Pydantic, and S3verless automatically generates a complete REST API with CRUD operations, pagination, filtering, and even JWT authentication—all backed by S3's infinite scalability and rock-bottom pricing.
-                </p>
-                <p style="font-size: 1.125rem; line-height: 1.8; color: var(--text-dark);">
-                    Perfect for MVPs, prototypes, side projects, and small-to-medium applications where you want to ship fast without the overhead of traditional database infrastructure.
-                </p>
+    <!-- Marquee -->
+    <div class="marquee" aria-hidden="true">
+        <div class="marquee-track" id="marqueeTrack">
+            <div class="marquee-item">
+                <span><b>99.999999999%</b> durability</span>
+                <span><b>$0.023</b> / GB / month</span>
+                <span><b>zero</b> database servers</span>
+                <span>it's <b>S3</b> all the way down</span>
+                <span>scales to <b>∞</b> (eventually consistent-ly)</span>
+                <span>backups? <b>it's S3</b></span>
+                <span>your move, <b>Postgres</b></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Steps -->
+    <section class="section">
+        <div class="container">
+            <span class="kicker">// how this works</span>
+            <h2 class="section-title">Three steps. No YAML.<br>No 3AM pages.</h2>
+            <p class="section-sub">S3verless stores each record as a JSON object in a bucket, keeps indexes in the bucket, and generates the whole API layer for you. Your infra diagram becomes a single rectangle.</p>
+
+            <div class="steps">
+                <div class="step reveal">
+                    <div class="step-num">STEP 01</div>
+                    <h3>Define a model</h3>
+                    <p>Plain Pydantic. Add <code>_indexes</code>, <code>_unique_fields</code>, relationships — the stuff your ORM made you suffer for.</p>
+                </div>
+                <div class="step reveal">
+                    <div class="step-num">STEP 02</div>
+                    <h3>Get a full API</h3>
+                    <p><code>create_s3verless_app()</code> hands you CRUD endpoints, JWT auth, filtering, pagination, and an admin GUI at <code>/admin</code>.</p>
+                </div>
+                <div class="step reveal">
+                    <div class="step-num">STEP 03</div>
+                    <h3>Deploy anywhere</h3>
+                    <p>It's just FastAPI. Lambda + Mangum, Docker, a VPS, your homelab. The "database" is already deployed — it's a bucket.</p>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Comparison Section -->
-    <section class="absurdity-section">
+    <!-- Features -->
+    <section class="section section-alt" id="features">
         <div class="container">
-            <h2 class="absurdity-title">Why Would You Do This? 🤔</h2>
-            
+            <span class="kicker">// feature list</span>
+            <h2 class="section-title">Features that shouldn't work.<br>But absolutely do.</h2>
+            <p class="section-sub">Everything below is real, tested, and in the PyPI package today. We checked twice because we didn't believe it either.</p>
+
+            <div class="features">
+                <div class="feature-card reveal">
+                    <div class="feature-head"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16l-1.4 11.1a2 2 0 0 1-2 1.9H7.4a2 2 0 0 1-2-1.9L4 8Z"/><path d="M7.5 8a4.5 4.5 0 0 1 9 0"/></svg></span></div>
+                    <h3 class="feature-title">S3 as a "Database"</h3>
+                    <p class="feature-description">Records as JSON objects, indexes as more JSON objects. Query it like a database. Your DBA is crying. You're laughing.</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-head"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span></div>
+                    <h3 class="feature-title">Auto-Generated APIs</h3>
+                    <p class="feature-description">One model in, full REST API out. CRUD, pagination, filtering, sorting — generated on FastAPI, documented by OpenAPI.</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-head"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span></div>
+                    <h3 class="feature-title">JWT Auth in S3</h3>
+                    <p class="feature-description">Users? S3. Refresh tokens? S3. Token blacklist? S3. Rate limiting included, because we contain multitudes.</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-head"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span><span class="feature-tag">v0.2</span></div>
+                    <h3 class="feature-title">Relationships</h3>
+                    <p class="feature-description"><code>has_many</code>, <code>has_one</code>, foreign keys, cascade deletes. Foreign key constraints enforced... in a bucket. Science can't explain it.</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-head"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3l-9 5v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg></span><span class="feature-tag">v0.2</span></div>
+                    <h3 class="feature-title">Migrations</h3>
+                    <p class="feature-description">Add, remove, rename, transform fields across every object in the bucket. Versioned, runnable, reversible-ish.</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-head"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 5-10 5L2 7l10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></span><span class="feature-tag">v0.2</span></div>
+                    <h3 class="feature-title">Caching</h3>
+                    <p class="feature-description">In-memory, LRU, and composite backends. Because even we admit that listing a bucket on every request is a lifestyle choice.</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-head"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg></span><span class="feature-tag">v0.2</span></div>
+                    <h3 class="feature-title">File Uploads</h3>
+                    <p class="feature-description">Presigned upload URLs out of the box. Files go straight to S3 — which, to be fair, is the one thing S3 was actually built for.</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-head"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></span></div>
+                    <h3 class="feature-title">Admin Interface</h3>
+                    <p class="feature-description">Auto-generated admin panel at <code>/admin</code>. Browse, edit, and delete your JSON files like a professional data engineer.</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-head"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.3L4.6 20a2 2 0 0 0 1.8 3h11.2a2 2 0 0 0 1.8-3L14 9.3V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg></span><span class="feature-tag">v0.2</span></div>
+                    <h3 class="feature-title">Testing Toolkit</h3>
+                    <p class="feature-description"><code>InMemoryS3</code> and model factories. Unit-test your bucket app without touching a bucket. The irony is not lost on us.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Code -->
+    <section class="section" id="how-it-works">
+        <div class="container">
+            <span class="kicker">// show me the code</span>
+            <h2 class="section-title">This is the entire backend.<br>Seriously.</h2>
+            <p class="section-sub">No Docker Compose with 6 services. No connection pool tuning. Just Python and a bucket.</p>
+
+            <div class="code-tabs reveal">
+                <div class="tabs-bar">
+                    <button class="tab-btn active" data-tab="t1">models.py</button>
+                    <button class="tab-btn" data-tab="t2">queries.py</button>
+                    <button class="tab-btn" data-tab="t3">auth.py</button>
+                    <button class="tab-btn" data-tab="t4">what_you_get.txt</button>
+                </div>
+
+                <div class="tab-pane active" id="t1"><div class="code-block"><span class="c-kw">from</span> s3verless <span class="c-kw">import</span> BaseS3Model, create_s3verless_app
+<span class="c-kw">from</span> pydantic <span class="c-kw">import</span> Field
+
+<span class="c-kw">class</span> <span class="c-cls">Product</span>(BaseS3Model):
+    _plural_name = <span class="c-str">"products"</span>      <span class="c-cmt"># → /products</span>
+    _indexes = [<span class="c-str">"category"</span>]        <span class="c-cmt"># fast lookups (for S3 values of "fast")</span>
+    _unique_fields = [<span class="c-str">"sku"</span>]       <span class="c-cmt"># uniqueness enforced. in a bucket.</span>
+
+    name: <span class="c-type">str</span>
+    sku: <span class="c-type">str</span>
+    price: <span class="c-type">float</span> = Field(gt=<span class="c-num">0</span>)
+    stock: <span class="c-type">int</span> = <span class="c-num">0</span>
+
+app = <span class="c-fn">create_s3verless_app</span>(
+    title=<span class="c-str">"My S3 Store"</span>,
+    model_packages=[<span class="c-str">"models"</span>],
+    enable_admin=<span class="c-kw">True</span>,
+)</div></div>
+
+                <div class="tab-pane" id="t2"><div class="code-block"><span class="c-cmt"># An actual query API. Filter, sort, paginate.</span>
+products = <span class="c-kw">await</span> <span class="c-fn">query</span>(Product, s3, bucket).<span class="c-fn">filter</span>(
+    category=<span class="c-str">"electronics"</span>,
+    price__lt=<span class="c-num">1000</span>,
+).<span class="c-fn">order_by</span>(<span class="c-str">"-created_at"</span>).<span class="c-fn">limit</span>(<span class="c-num">10</span>).<span class="c-fn">all</span>()
+
+<span class="c-cmt"># Relationships work too. CASCADE deletes included,</span>
+<span class="c-cmt"># because we fear no god.</span>
+<span class="c-kw">class</span> <span class="c-cls">Author</span>(BaseS3Model):
+    name: <span class="c-type">str</span>
+    posts = <span class="c-fn">has_many</span>(<span class="c-str">"Post"</span>, foreign_key=<span class="c-str">"author_id"</span>,
+                     on_delete=OnDelete.CASCADE)</div></div>
+
+                <div class="tab-pane" id="t3"><div class="code-block"><span class="c-cmt"># JWT auth with refresh tokens, token blacklist,</span>
+<span class="c-cmt"># and rate limiting. Users live in the bucket too.</span>
+<span class="c-kw">class</span> <span class="c-cls">Post</span>(BaseS3Model):
+    _require_ownership = <span class="c-kw">True</span>   <span class="c-cmt"># users can only touch their own</span>
+    _owner_field = <span class="c-str">"user_id"</span>
+
+    user_id: <span class="c-type">str</span>
+    title: <span class="c-type">str</span>
+    content: <span class="c-type">str</span>
+
+<span class="c-cmt"># Endpoints you get for free:</span>
+<span class="c-cmt">#   POST /auth/register   POST /auth/login</span>
+<span class="c-cmt">#   POST /auth/refresh    POST /auth/logout</span></div></div>
+
+                <div class="tab-pane" id="t4"><div class="code-block"><span class="c-method">POST  </span> <span class="c-path">/products</span>            <span class="c-cmt"># create</span>
+<span class="c-method">GET   </span> <span class="c-path">/products</span>            <span class="c-cmt"># list + filter + paginate</span>
+<span class="c-method">GET   </span> <span class="c-path">/products/{id}</span>       <span class="c-cmt"># read</span>
+<span class="c-method">PUT   </span> <span class="c-path">/products/{id}</span>       <span class="c-cmt"># update</span>
+<span class="c-method">DELETE</span> <span class="c-path">/products/{id}</span>       <span class="c-cmt"># delete (pour one out)</span>
+<span class="c-method">POST  </span> <span class="c-path">/auth/register</span>       <span class="c-cmt"># JWT auth, in S3</span>
+<span class="c-method">GET   </span> <span class="c-path">/admin</span>               <span class="c-cmt"># admin GUI</span>
+<span class="c-method">GET   </span> <span class="c-path">/docs</span>                <span class="c-cmt"># OpenAPI, courtesy of FastAPI</span>
+
+<span class="c-cmt"># Database servers provisioned: 0
+# Buckets involved: 1</span></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cost Calculator -->
+    <section class="section section-alt" id="calculator">
+        <div class="container">
+            <span class="kicker">// interactive evidence</span>
+            <h2 class="section-title">The "wait, that's it?"<br>cost calculator</h2>
+            <p class="section-sub">Drag the sliders. Watch your database bill approach zero. Actual S3 pricing, no tricks — storage plus request costs.</p>
+
+            <div class="calc reveal">
+                <div class="calc-controls">
+                    <div class="calc-slider-group">
+                        <label>records <output id="oRecords">100,000</output></label>
+                        <input type="range" id="sRecords" min="0" max="100" value="50">
+                    </div>
+                    <div class="calc-slider-group">
+                        <label>avg record size <output id="oSize">2 KB</output></label>
+                        <input type="range" id="sSize" min="1" max="20" value="2">
+                    </div>
+                    <div class="calc-slider-group">
+                        <label>reads / day <output id="oReads">10,000</output></label>
+                        <input type="range" id="sReads" min="0" max="100" value="33">
+                    </div>
+                    <div class="calc-slider-group">
+                        <label>writes / day <output id="oWrites">1,000</output></label>
+                        <input type="range" id="sWrites" min="0" max="100" value="40">
+                    </div>
+                </div>
+
+                <div class="calc-result">
+                    <div class="calc-row"><span>storage</span><span class="val" id="rStorage">0.2 GB → $0.005</span></div>
+                    <div class="calc-row"><span>requests (GET+PUT)</span><span class="val" id="rRequests">$0.27</span></div>
+                    <div class="calc-big"><span class="amount" id="rTotal">$0.28</span><span class="per"> /month</span></div>
+                    <div class="calc-vs">vs cheapest managed Postgres: <s>$15.00</s>/month</div>
+                    <div class="calc-savings" id="rSavings">You save <b>$176/year</b> — that's <b>35 coffees</b></div>
+                    <div class="calc-note">// S3 standard: $0.023/GB-mo, GET $0.0004/1k, PUT $0.005/1k<br>// postgres floor: smallest RDS you can provision without crying</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison -->
+    <section class="section">
+        <div class="container">
+            <div class="center">
+                <span class="kicker">// a fair and balanced comparison</span>
+                <h2 class="section-title">Why would you do this?</h2>
+                <p class="section-sub">Great question. Here's an objective analysis.</p>
+            </div>
+
             <div class="comparison">
-                <div class="comparison-box boring">
-                    <h3>😴 Normal People</h3>
+                <div class="comparison-box boring reveal">
+                    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/></svg>With a "real" database</h3>
                     <ul class="comparison-list">
                         <li>Set up PostgreSQL server</li>
                         <li>Configure connection pooling</li>
                         <li>Manage database migrations</li>
                         <li>Monitor query performance</li>
-                        <li>Scale replicas</li>
+                        <li>Scale read replicas</li>
                         <li>Pray backups work</li>
                         <li>Pay for RDS</li>
                         <li>Wake up at 3AM</li>
                     </ul>
                 </div>
 
-                <div class="comparison-box exciting">
-                    <h3>🪣 S3verless Enjoyers</h3>
+                <div class="comparison-box exciting reveal">
+                    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16l-1.4 11.1a2 2 0 0 1-2 1.9H7.4a2 2 0 0 1-2-1.9L4 8Z"/><path d="M7.5 8a4.5 4.5 0 0 1 9 0"/></svg>With S3verless</h3>
                     <ul class="comparison-list">
                         <li>Create S3 bucket</li>
                         <li>Write Python code</li>
                         <li>Deploy</li>
                         <li>Go to beach</li>
-                        <li>Check phone: App still works</li>
+                        <li>Check phone: app still works</li>
                         <li>Pay $0.02/month</li>
                         <li>Sleep peacefully</li>
                         <li>Live your best life</li>
                     </ul>
                 </div>
             </div>
-
-            <p style="margin-top: 2rem; font-size: 1.1rem; color: #78350f;">
-                <strong>Spoiler:</strong> S3 is infinitely scalable, ridiculously cheap, and requires zero maintenance. 
-                Your "real database" is not.
-            </p>
         </div>
     </section>
 
-    <!-- Features Section -->
-    <section class="section" id="features">
+    <!-- Honest limitations -->
+    <section class="section section-alt" id="honest">
         <div class="container">
-            <h2 class="section-title">Features That Shouldn't Exist<br>(But Totally Work)</h2>
-            
-            <div class="features">
-                <div class="feature-card">
-                    <span class="feature-icon">🗄️</span>
-                    <h3 class="feature-title">S3 as a "Database"</h3>
-                    <p class="feature-description">
-                        Store JSON objects in S3. Query them like a database. 
-                        Your DBA is crying. You're laughing. Everyone's confused.
-                    </p>
-                </div>
+            <span class="kicker">// the fine print</span>
+            <h2 class="section-title">When you should<br><em>not</em> use this</h2>
+            <p class="section-sub">We're joking around, but we're not monsters. Here's the honest list:</p>
 
-                <div class="feature-card">
-                    <span class="feature-icon">⚡</span>
-                    <h3 class="feature-title">Auto-Generated APIs</h3>
-                    <p class="feature-description">
-                        Define a Pydantic model. Get a full REST API. 
-                        CRUD operations, pagination, filtering - all automatic. 
-                        Magic? No, just questionable choices.
-                    </p>
+            <div class="honest-grid">
+                <div class="honest-card reveal">
+                    <h3>! thousands of writes/sec</h3>
+                    <p>S3 has per-prefix request limits and no transactions. If you're building a high-frequency trading platform, <b>please use a real database</b>. And therapy.</p>
                 </div>
-
-                <div class="feature-card">
-                    <span class="feature-icon">🔐</span>
-                    <h3 class="feature-title">JWT Auth in S3</h3>
-                    <p class="feature-description">
-                        Users? Stored in S3. Sessions? S3. 
-                        Tokens? You guessed it - S3. 
-                        It's S3 all the way down.
-                    </p>
+                <div class="honest-card reveal">
+                    <h3>! complex joins &amp; transactions</h3>
+                    <p>We fake relationships with indexes and optimism. Multi-row ACID transactions across tables? <b>That's Postgres's whole thing.</b> Let it have it.</p>
                 </div>
-
-                <div class="feature-card">
-                    <span class="feature-icon">🎨</span>
-                    <h3 class="feature-title">Admin Interface</h3>
-                    <p class="feature-description">
-                        Auto-generated admin panel for your S3 "database". 
-                        Browse, edit, delete your JSON files like a professional.
-                    </p>
-                </div>
-
-                <div class="feature-card">
-                    <span class="feature-icon">🔍</span>
-                    <h3 class="feature-title">Advanced Queries*</h3>
-                    <p class="feature-description">
-                        Filter, sort, paginate your data! 
-                        <small>*We download everything and filter in Python. 
-                        It's... fine. Probably.</small>
-                    </p>
-                </div>
-
-                <div class="feature-card">
-                    <span class="feature-icon">💰</span>
-                    <h3 class="feature-title">Absurdly Cheap</h3>
-                    <p class="feature-description">
-                        S3 costs $0.023 per GB per month. 
-                        Your entire database might cost less than a coffee. 
-                        Your AWS bill will think there's a mistake.
-                    </p>
+                <div class="honest-card reveal">
+                    <h3>! sub-50ms read latency at scale</h3>
+                    <p>Our advanced query engine downloads things and filters them in Python. We ship caching to cope. <b>For your MVP's 200 users, it's genuinely fine.</b></p>
                 </div>
             </div>
+
+            <p class="fine-print" style="margin-top: 2.5rem;">// for MVPs, prototypes, internal tools, and side projects: ship it and thank us later</p>
         </div>
     </section>
 
-    <!-- Code Example Section -->
-    <section class="section section-alt" id="how-it-works">
+    <!-- Testimonials -->
+    <section class="section" id="testimonials">
         <div class="container">
-            <h2 class="section-title">See How Ridiculous This Is</h2>
-            
-            <div class="code-wrapper">
-                <div class="code-header">
-                    <div class="code-dots">
-                        <span class="code-dot red"></span>
-                        <span class="code-dot yellow"></span>
-                        <span class="code-dot green"></span>
-                    </div>
-                    <span class="code-filename">main.py</span>
+            <div class="center">
+                <span class="kicker">// social proof*</span>
+                <h2 class="section-title">What people are saying</h2>
+                <p class="section-sub">The community has spoken.</p>
+            </div>
+
+            <div class="testimonials">
+                <div class="testimonial reveal">
+                    <p class="testimonial-text">I showed this to our DBA and they had to lie down.</p>
+                    <p class="testimonial-author">Sarah K.</p>
+                    <p class="testimonial-role">senior dev, questionable choices</p>
                 </div>
-                <div class="code-example">
-<span class="code-comment"># This is your entire backend. Seriously.</span>
-
-<span style="color: #f472b6;">from</span> s3verless <span style="color: #f472b6;">import</span> BaseS3Model, create_s3verless_app
-<span style="color: #f472b6;">from</span> pydantic <span style="color: #f472b6;">import</span> Field
-
-<span class="code-comment"># Define a model</span>
-<span style="color: #f472b6;">class</span> <span style="color: #fbbf24;">Product</span>(BaseS3Model):
-    _unique_fields = [<span style="color: #fbbf24;">"sku"</span>]  <span class="code-comment"># Uniqueness enforced across S3!</span>
-    
-    name: <span style="color: #60a5fa;">str</span>
-    sku: <span style="color: #60a5fa;">str</span>
-    price: <span style="color: #60a5fa;">float</span> = Field(gt=<span style="color: #fbbf24;">0</span>)
-    stock: <span style="color: #60a5fa;">int</span> = <span style="color: #fbbf24;">0</span>
-
-<span class="code-comment"># Create the app</span>
-app = create_s3verless_app(
-    title=<span style="color: #fbbf24;">"My S3 Store"</span>,
-    model_packages=[<span style="color: #fbbf24;">"models"</span>],
-)
-
-<span class="code-comment"># That's it. You now have:</span>
-<span class="code-comment"># - POST /products</span>
-<span class="code-comment"># - GET /products (with pagination!)</span>
-<span class="code-comment"># - GET /products/{id}</span>
-<span class="code-comment"># - PUT /products/{id}</span>
-<span class="code-comment"># - DELETE /products/{id}</span>
-<span class="code-comment"># - GET /admin (GUI!)</span>
-<span class="code-comment"># - All backed by... a bucket. 🪣</span>
+                <div class="testimonial reveal">
+                    <p class="testimonial-text">My infrastructure diagram is just a bucket now. My manager thinks I'm not working.</p>
+                    <p class="testimonial-author">Mike R.</p>
+                    <p class="testimonial-role">devops engineer (unemployed soon)</p>
+                </div>
+                <div class="testimonial reveal">
+                    <p class="testimonial-text">I went from 10 AWS services to 1. I don't know what to do with all this free time.</p>
+                    <p class="testimonial-author">Jessica L.</p>
+                    <p class="testimonial-role">full stack dev, living her best life</p>
                 </div>
             </div>
 
-            <p style="text-align: center; margin-top: 2rem; font-size: 1.2rem; color: var(--text-gray);">
-                <em>"This feels wrong but I can't stop using it"</em> - Probably you, soon
-            </p>
-        </div>
-    </section>
-
-    <!-- Stats Section -->
-    <section class="section">
-        <div class="container">
-            <div class="stats">
-                <div class="stat">
-                    <div class="stat-number">$0.02</div>
-                    <div class="stat-label">Monthly cost for 10k users</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-number">0</div>
-                    <div class="stat-label">Database servers to manage</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-number">∞</div>
-                    <div class="stat-label">Scalability (it's S3)</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-number">🤯</div>
-                    <div class="stat-label">Your DBA's reaction</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Testimonials Section -->
-    <section class="section section-alt" id="testimonials">
-        <div class="container">
-            <h2 class="section-title">What People Are Saying*</h2>
-            
-            <div class="testimonial">
-                <p class="testimonial-text">
-                    "I showed this to our DBA and they had to lie down."
-                </p>
-                <p class="testimonial-author">Sarah K.</p>
-                <p class="testimonial-role">Senior Developer Who Made Questionable Choices</p>
-            </div>
-
-            <div class="testimonial">
-                <p class="testimonial-text">
-                    "My infrastructure diagram is just a bucket now. My manager thinks I'm not working."
-                </p>
-                <p class="testimonial-author">Mike R.</p>
-                <p class="testimonial-role">DevOps Engineer (Unemployed Soon)</p>
-            </div>
-
-            <div class="testimonial">
-                <p class="testimonial-text">
-                    "I went from 10 AWS services to 1. I don't know what to do with all this free time."
-                </p>
-                <p class="testimonial-author">Jessica L.</p>
-                <p class="testimonial-role">Full Stack Developer Living Her Best Life</p>
-            </div>
-
-            <p style="text-align: center; margin-top: 2rem; font-size: 0.9rem; color: var(--text-gray);">
-                <em>*These are totally real and not made up. Trust us.</em>
-            </p>
+            <p class="fine-print">*these are totally real and not made up. trust us.</p>
         </div>
     </section>
 
     <!-- Final CTA -->
-    <section class="section">
-        <div class="container" style="text-align: center; max-width: 700px;">
-            <h2 class="section-title">Ready to Get Started?</h2>
-            <p style="font-size: 1.125rem; color: var(--text-gray); margin-bottom: 2.5rem; line-height: 1.7;">
-                Join developers who are building MVPs and prototypes with S3verless. 
-                It's free, open source, and surprisingly practical.
-            </p>
-            
-            <div class="cta-buttons">
-                <a href="https://github.com/alexjacobs08/s3verless" class="btn btn-primary">
-                    Get Started on GitHub
-                </a>
-                <a href="/guide/" class="btn btn-secondary">
-                    Read the Docs
-                </a>
+    <section class="section final-cta">
+        <div class="container">
+            <span class="kicker">// join the bucket</span>
+            <h2>Ship it. The bucket<br>can take it.</h2>
+            <p class="section-sub">Free, open source, MIT licensed. 101 passing tests. Zero database servers were harmed in the making of this framework.</p>
+
+            <div class="final-install">
+                <div class="install-pill">
+                    <span class="prompt">$</span>
+                    <code>pip install s3verless</code>
+                    <button class="copy-btn" data-copy="pip install s3verless">copy</button>
+                </div>
+            </div>
+
+            <div class="hero-actions" style="justify-content: center;">
+                <a href="/guide/" class="btn btn-primary">Read the Docs →</a>
+                <a href="https://github.com/alexjacobs08/s3verless" class="btn btn-secondary">★ Star on GitHub</a>
             </div>
         </div>
     </section>
@@ -1060,46 +1528,220 @@ app = create_s3verless_app(
     <!-- Footer -->
     <footer>
         <div class="container">
-            <p style="font-size: 1rem; margin-bottom: 0.75rem; opacity: 0.9;">
-                S3verless • Open Source Python Framework
-            </p>
-            
-            <div class="footer-links">
-                <a href="https://github.com/alexjacobs08/s3verless">GitHub</a>
-                <a href="/guide/">Documentation</a>
-                <a href="https://github.com/alexjacobs08/s3verless/issues">Issues</a>
-                <a href="https://github.com/alexjacobs08/s3verless/blob/main/CONTRIBUTING.md">Contributing</a>
-                <a href="https://github.com/alexjacobs08/s3verless/blob/main/LICENSE">MIT License</a>
-                <a href="https://github.com/alexjacobs08/s3verless/blob/main/CHANGELOG.md">Changelog</a>
+            <div class="footer-grid">
+                <div>
+                    <pre class="ascii-bucket" aria-hidden="true">   ________
+  |        |
+  |  S 3   |
+  |________|</pre>
+                    <div class="footer-brand"><svg class="bucket-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16l-1.4 11.1a2 2 0 0 1-2 1.9H7.4a2 2 0 0 1-2-1.9L4 8Z"/><path d="M7.5 8a4.5 4.5 0 0 1 9 0"/></svg>S3verless</div>
+                    <div class="footer-tagline">because databases are overrated</div>
+                </div>
+                <div class="footer-links">
+                    <a href="https://github.com/alexjacobs08/s3verless">GitHub</a>
+                    <a href="/guide/">Documentation</a>
+                    <a href="https://pypi.org/project/s3verless/">PyPI</a>
+                    <a href="https://github.com/alexjacobs08/s3verless/issues">Issues</a>
+                    <a href="https://github.com/alexjacobs08/s3verless/blob/main/CONTRIBUTING.md">Contributing</a>
+                    <a href="https://github.com/alexjacobs08/s3verless/blob/main/CHANGELOG.md">Changelog</a>
+                </div>
             </div>
-
-            <p style="margin-top: 2rem; font-size: 0.8125rem; opacity: 0.5;">
-                © 2025 S3verless Contributors • MIT License
-            </p>
+            <div class="footer-bottom">
+                <span>© 2025 S3verless Contributors — MIT License</span>
+                <span>it's S3 all the way down</span>
+            </div>
         </div>
     </footer>
 
     <script>
-        // Smooth scroll for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth' });
-                }
+        // ===== Navbar scroll state =====
+        const navbar = document.getElementById('navbar');
+        addEventListener('scroll', () => {
+            navbar.classList.toggle('scrolled', scrollY > 10);
+        }, { passive: true });
+
+        // ===== Mobile menu =====
+        const toggle = document.getElementById('mobileToggle');
+        const mobileMenu = document.getElementById('mobileMenu');
+        toggle.addEventListener('click', () => mobileMenu.classList.toggle('open'));
+        mobileMenu.querySelectorAll('a').forEach(a =>
+            a.addEventListener('click', () => mobileMenu.classList.remove('open')));
+
+        // ===== Copy buttons =====
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(btn.dataset.copy);
+                    btn.textContent = 'copied!';
+                    btn.classList.add('copied');
+                    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1600);
+                } catch { btn.textContent = ':/'; }
             });
         });
 
-        // Add sparkle effect on logo hover
-        const logo = document.querySelector('.logo');
-        logo.addEventListener('mouseenter', () => {
-            logo.style.transform = 'scale(1.2) rotate(10deg)';
+        // ===== Terminal typing animation =====
+        const termLines = [
+            { type: 'cmd', text: 'pip install s3verless' },
+            { type: 'ok',  text: '✓ Successfully installed s3verless-0.2.0' },
+            { type: 'cmd', text: 'python main.py' },
+            { type: 'out', text: 'INFO:  Uvicorn running on http://0.0.0.0:8000' },
+            { type: 'out', text: 'INFO:  Generated routes for [Product]' },
+            { type: 'key', text: '  → POST   /products' },
+            { type: 'key', text: '  → GET    /products' },
+            { type: 'key', text: '  → GET    /products/{id}' },
+            { type: 'key', text: '  → PUT    /products/{id}' },
+            { type: 'key', text: '  → DELETE /products/{id}' },
+            { type: 'key', text: '  → GET    /admin' },
+            { type: 'ok',  text: '✓ database: s3://my-bucket (yes, really)' },
+            { type: 'comment', text: '# that\'s it. that\'s the database.' },
+        ];
+
+        const termBody = document.getElementById('terminalBody');
+        const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        function span(cls, text) {
+            const s = document.createElement('span');
+            if (cls) s.className = cls;
+            s.textContent = text;
+            return s;
+        }
+
+        async function typeTerminal() {
+            if (reduceMotion) {
+                termLines.forEach(l => {
+                    if (l.type === 'cmd') {
+                        termBody.appendChild(span('t-prompt', '$ '));
+                        termBody.appendChild(span('t-cmd', l.text + '\n'));
+                    } else {
+                        termBody.appendChild(span('t-' + l.type, l.text + '\n'));
+                    }
+                });
+                return;
+            }
+            while (true) {
+                termBody.innerHTML = '';
+                const cursor = span('cursor', '');
+                for (const line of termLines) {
+                    if (line.type === 'cmd') {
+                        termBody.appendChild(span('t-prompt', '$ '));
+                        const cmdSpan = span('t-cmd', '');
+                        termBody.appendChild(cmdSpan);
+                        termBody.appendChild(cursor);
+                        for (const ch of line.text) {
+                            cmdSpan.textContent += ch;
+                            await sleep(28 + Math.random() * 45);
+                        }
+                        termBody.insertBefore(span(null, '\n'), cursor);
+                        await sleep(350);
+                    } else {
+                        termBody.insertBefore(span('t-' + line.type, line.text + '\n'), cursor);
+                        await sleep(line.type === 'key' ? 90 : 160);
+                    }
+                }
+                await sleep(6000);
+            }
+        }
+        typeTerminal();
+
+        // ===== Region picker (does nothing, proudly) =====
+        const regions = ['us-east-1', 'us-west-2', 'eu-west-1', 'eu-central-1', 'ap-southeast-2', 'bucket-1'];
+        let regionIdx = 0;
+        const regionChip = document.getElementById('regionChip');
+
+        function toast(msg) {
+            let t = document.querySelector('.toast');
+            if (!t) {
+                t = document.createElement('div');
+                t.className = 'toast';
+                document.body.appendChild(t);
+            }
+            t.textContent = msg;
+            t.classList.add('show');
+            clearTimeout(t._hideTimer);
+            t._hideTimer = setTimeout(() => t.classList.remove('show'), 2400);
+        }
+
+        if (regionChip) {
+            regionChip.addEventListener('click', () => {
+                regionIdx = (regionIdx + 1) % regions.length;
+                regionChip.textContent = regions[regionIdx] + ' ▾';
+                toast(regions[regionIdx] === 'bucket-1'
+                    ? 'bucket-1: the only region that matters'
+                    : 'region updated. nothing happened. it\'s a bucket.');
+            });
+        }
+
+        // ===== Tabs =====
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
         });
-        logo.addEventListener('mouseleave', () => {
-            logo.style.transform = 'scale(1) rotate(0deg)';
-        });
+
+        // ===== Cost calculator =====
+        const $ = id => document.getElementById(id);
+        const expScale = v => Math.pow(10, 3 + (v / 100) * 4);          // 1k → 10M
+        const expSmall = v => Math.pow(10, 2 + (v / 100) * 3);          // 100 → 100k
+        const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M'
+                       : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'K'
+                       : Math.round(n).toString();
+        const money = n => '$' + (n < 0.01 ? n.toFixed(3) : n < 1 ? n.toFixed(2) : n.toFixed(2));
+
+        function calc() {
+            const records = expScale(+$('sRecords').value);
+            const sizeKB = +$('sSize').value;
+            const reads = expScale(+$('sReads').value);
+            const writes = expSmall(+$('sWrites').value);
+
+            $('oRecords').textContent = fmt(records);
+            $('oSize').textContent = sizeKB + ' KB';
+            $('oReads').textContent = fmt(reads);
+            $('oWrites').textContent = fmt(writes);
+
+            const gb = records * sizeKB / 1e6;
+            const storageCost = gb * 0.023;
+            const getCost = reads * 30 / 1000 * 0.0004;
+            const putCost = writes * 30 / 1000 * 0.005;
+            const total = storageCost + getCost + putCost;
+            const pg = 15;
+            const yearly = Math.max(0, (pg - total) * 12);
+
+            $('rStorage').textContent = (gb < 1 ? (gb * 1000).toFixed(0) + ' MB' : gb.toFixed(1) + ' GB') + ' → ' + money(storageCost);
+            $('rRequests').textContent = money(getCost + putCost);
+            $('rTotal').textContent = money(total);
+
+            if (total > pg) {
+                $('rSavings').innerHTML = 'Okay, at this scale consider DynamoDB. <b>Still cheaper than RDS though.</b>';
+            } else {
+                const coffees = Math.round(yearly / 5);
+                $('rSavings').innerHTML = `You save <b>$${yearly.toFixed(0)}/year</b> — that's <b>${coffees} coffees</b>`;
+            }
+        }
+        ['sRecords', 'sSize', 'sReads', 'sWrites'].forEach(id => $(id).addEventListener('input', calc));
+        calc();
+
+        // ===== Reveal on scroll =====
+        if (!('IntersectionObserver' in window)) {
+            document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible'));
+        } else {
+            const io = new IntersectionObserver(entries => {
+                entries.forEach((e, i) => {
+                    if (e.isIntersecting) {
+                        setTimeout(() => e.target.classList.add('visible'), (i % 3) * 80);
+                        io.unobserve(e.target);
+                    }
+                });
+            }, { threshold: 0.12 });
+            document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+        }
+
+        // ===== Duplicate marquee for seamless loop =====
+        const track = document.getElementById('marqueeTrack');
+        track.innerHTML += track.innerHTML;
     </script>
 </body>
 </html>
-
